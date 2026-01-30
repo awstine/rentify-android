@@ -18,7 +18,7 @@ sealed class BottomNavItem(
     val inactiveIcon: Any // Can be ImageVector or @DrawableRes Int
 ) {
     object Home : BottomNavItem("home", "Home", R.drawable.home, Icons.Outlined.Home)
-    object Explore : BottomNavItem("explore", "Rooms", Icons.Outlined.Apartment, Icons.Outlined.Apartment)
-    object Rewards : BottomNavItem("rewards", "Rewards", Icons.Filled.Star, Icons.Outlined.StarBorder)
-    object Profile : BottomNavItem("profile", "Profile", Icons.Filled.Person, Icons.Outlined.Person)
+    object Explore : BottomNavItem("explore", "Rooms", R.drawable.room, R.drawable.room)
+    object Rewards : BottomNavItem("rewards", "Rewards", R.drawable.reward, R.drawable.reward)
+    object Profile : BottomNavItem("profile", "Profile", R.drawable.profile, R.drawable.profile)
 }

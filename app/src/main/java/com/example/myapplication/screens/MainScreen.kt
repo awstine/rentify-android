@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -133,7 +134,8 @@ fun StyledBottomBar(navController: NavHostController, items: List<BottomNavItem>
     var selectedRoute by remember { mutableStateOf(BottomNavItem.Home.route) }
 
     NavigationBar(
-        modifier = Modifier.clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
+        modifier = Modifier
+            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
         containerColor = Color.White,
         tonalElevation = 0.dp // Remove default tint
     ) {
@@ -157,7 +159,7 @@ fun RowScope.StyledNavigationItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    // Clickable area that takes the full available space
+
     Box(
         modifier = Modifier
             .weight(1f)
@@ -173,19 +175,21 @@ fun RowScope.StyledNavigationItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            val icon = if (isSelected) item.activeIcon else item.inactiveIcon
-            val tint = if (isSelected) Color.White else Color.Gray
+            val icon = if (isSelected || item.route == BottomNavItem.Home.route) item.activeIcon else item.inactiveIcon
+            val tint = if (isSelected) Color.White else NavyPrimary
 
             when (icon) {
                 is ImageVector -> Icon(
                     imageVector = icon,
                     contentDescription = item.label,
-                    tint = tint
+                    tint = tint,
+                    modifier = Modifier.size(24.dp)
                 )
                 is Int -> Icon(
                     painter = painterResource(id = icon),
                     contentDescription = item.label,
-                    tint = tint
+                    tint = tint,
+                    modifier = Modifier.size(24.dp)
                 )
             }
 

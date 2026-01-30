@@ -32,9 +32,6 @@ import com.example.myapplication.data.models.WashingMachine
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-// --- Colors & Styles ---
-// Removed previous color palette to use default Material Theme colors or transparent/white as requested,
-// except for the GreenSuccess which is needed for the paid card.
 val GreenSuccess = Color(0xFF4CAF50)
 
 @Composable
@@ -218,77 +215,112 @@ fun HeaderSection(userName: String, roomNumber: String) {
 
 @Composable
 fun RentStatusCard(
-    amountDue: Double, 
-    dueDate: String, 
+    amountDue: Double,
+    dueDate: String,
     isPaid: Boolean,
     onPayClick: () -> Unit
 ) {
-    // Keep green if paid, otherwise use default theme colors
-    val cardBackground = if (isPaid) {
-        Brush.horizontalGradient(listOf(GreenSuccess, Color(0xFF81C784)))
+    val cardBrush = if (isPaid) {
+        Brush.verticalGradient(
+            colors = listOf(Color(0xFF66BB6A), Color(0xFF388E3C))
+        )
     } else {
-         Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary))
+        Brush.verticalGradient(
+            colors = listOf(MaterialTheme.colorScheme.primary, Color(0xFF002952)) // Darker shade of primary
+        )
     }
-    
-    val contentColor = Color.White // Keeping white text on colored cards for readability
+    val contentColor = Color.White
 
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(8.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
     ) {
-        Box(modifier = Modifier.background(cardBackground).padding(24.dp)) {
-            Column {
+        Box(
+            modifier = Modifier
+                .background(cardBrush)
+                .padding(24.dp)
+        ) {
+            // Faint background icon
+            Icon(
+                imageVector = Icons.Default.AccountBalanceWallet,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.1f),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(80.dp)
+                    .offset(x = 10.dp, y = 10.dp)
+            )
+
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Text(text = "Rent Status", color = contentColor.copy(alpha = 0.8f))
-                    if (!isPaid) {
+                    Text(
+                        text = "Monthly Rent",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = contentColor.copy(alpha = 0.9f)
+                    )
+
+                    if (isPaid) {
                         Surface(
+                            color = Color.White.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "PAID",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    } else {
+                         Surface(
                             color = MaterialTheme.colorScheme.error,
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                text = "DUE SOON",
+                                text = "DUE",
                                 color = Color.White,
-                                fontSize = 10.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                             )
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Text(
-                    text = if (isPaid) "Paid" else "KES ${amountDue.toInt()}",
-                    fontSize = 32.sp,
+                    text = if (isPaid) "All clear!" else "KES ${amountDue.toInt()}",
+                    fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
                     color = contentColor
                 )
-                
-                // Format date string nicely if possible, assuming YYYY-MM-DD from DB
-                val formattedDate = try {
-                     // Simple parsing, better to use proper DateTime formatter
-                     dueDate
-                } catch (e: Exception) { dueDate }
-                
+
                 Text(
-                    text = if (isPaid) "Paid for this month" else "Due by $formattedDate",
+                    text = if (isPaid) "Thank you!" else "Due by $dueDate",
+                    fontSize = 14.sp,
                     color = contentColor.copy(alpha = 0.8f)
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
-
                 if (!isPaid) {
+                    Spacer(modifier = Modifier.height(24.dp))
                     Button(
                         onClick = onPayClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
                     ) {
-                        Text("Pay via M-Pesa", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Text("Pay Now", fontWeight = FontWeight.Bold)
                     }
                 }
             }

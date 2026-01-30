@@ -477,154 +477,98 @@ fun RoomCard(
 ) {
     val isOccupied = !room.is_available
 
-    // Logic: Occupied rooms are softer/greyer, Vacant rooms pop with color
     val statusColor = if (isOccupied) Color.Gray else GreenSuccess
-    val contentAlpha = if (isOccupied) 0.6f else 1f
 
-    // Card Elevation: Higher for vacant (active), lower for occupied
-    val elevation = if (isOccupied) 2.dp else 8.dp
-
-    // Background: White usually looks cleanest, relying on the tag for status color
-    val containerColor = Color.White
+    val elevation = if (isOccupied) 4.dp else 12.dp
 
     ElevatedCard(
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = elevation),
-        shape = RoundedCornerShape(16.dp), // Softer, modern corners
-        colors = CardDefaults.elevatedCardColors(containerColor = containerColor),
+        shape = RoundedCornerShape(24.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 4.dp) // External spacing
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier
+                .padding(24.dp)
                 .fillMaxWidth()
-                .padding(16.dp) // Internal spacing
         ) {
-            // --- TOP ROW: Room Number & Status Badge ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Room Icon
-                    Icon(
-                        imageVector = Icons.Filled.Home,
-                        contentDescription = null,
-                        tint = if (isOccupied) Color.Gray else NavyPrimary,
-                        modifier = Modifier.size(24.dp)
+                Column {
+                    Text(
+                        text = "Room ${room.room_number}",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isOccupied) Color.Gray else MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            text = "Room ${room.room_number}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isOccupied) Color.Gray else NavyPrimary
-                        )
-                        // Floor / Type
-                        val type = if (room.floor != null) "${room.floor} Floor" else "Standard"
-                        Text(
-                            text = type,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
-                        )
-                    }
+                    val type = if (room.floor != null) "Floor ${room.floor}" else "Standard"
+                    Text(
+                        text = type,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
                 }
-
-                // Status Pill
                 StatusBadge(isOccupied = isOccupied, color = statusColor)
             }
 
-            // --- TENANT INFO (Only for Admin/Landlord and if Occupied) ---
             if (isOccupied && (isAdmin || isLandlord) && tenantName != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Tenant",
-                            tint = NavyPrimary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Tenant: $tenantName",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = NavyPrimary
-                        )
-                    }
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Tenant",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = tenantName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
             HorizontalDivider(
-                modifier = Modifier.padding(vertical = 12.dp),
-                thickness = 1.dp,
-                color = Color.LightGray.copy(alpha = 0.3f)
+                modifier = Modifier.padding(vertical = 16.dp),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
             )
 
-            // --- BOTTOM ROW: Price & Actions ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Price Section
-                Column {
-                    Text(
-                        text = "Monthly Rent",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = "KES ${room.monthly_rent.toInt()}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (isOccupied) Color.Gray else NavyPrimary
-                    )
-                }
+                Text(
+                    text = "KES ${room.monthly_rent.toInt()}",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (isOccupied) Color.Gray else GreenSuccess
+                )
 
-                // Action Buttons (Only for Admin/Landlord)
                 if (isAdmin || isLandlord) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Using FilledTonalIconButtons for a modern look
-                        FilledTonalIconButton(
-                            onClick = { onEdit(room) },
-                            modifier = Modifier.size(32.dp),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = NavyPrimary.copy(alpha = 0.1f),
-                                contentColor = NavyPrimary
-                            )
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp))
+                    Row {
+                        IconButton(onClick = { onEdit(room) }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        FilledTonalIconButton(
-                            onClick = { onDelete(room) },
-                            modifier = Modifier.size(32.dp),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = Color.Red.copy(alpha = 0.1f),
-                                contentColor = Color.Red
-                            )
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(16.dp))
+                        IconButton(onClick = { onDelete(room) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
                         }
                     }
                 } else if (isTenant && !isOccupied) {
-                    // Action Buttons for Tenants
-                    FilledTonalButton(
+                    Button(
                         onClick = { onBook(room) },
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = NavyPrimary,
-                            contentColor = Color.White
-                        )
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
                     ) {
-                        Text("Book Now")
+                        Text("Book Now", fontSize = 16.sp)
                     }
                 }
             }
@@ -632,16 +576,17 @@ fun RoomCard(
     }
 }
 
+
 // Helper Composable for the Status Pill
 @Composable
 fun StatusBadge(isOccupied: Boolean, color: Color) {
     val text = if (isOccupied) "Occupied" else "Vacant"
-    val backgroundColor = color.copy(alpha = 0.15f)
+    val backgroundColor = color.copy(alpha = 0.1f)
 
     Surface(
         color = backgroundColor,
-        shape = RoundedCornerShape(50), // Pill shape
-        border = BorderStroke(1.dp, color.copy(alpha = 0.5f))
+        shape = RoundedCornerShape(50),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.2f))
     ) {
         Text(
             text = text.uppercase(),
