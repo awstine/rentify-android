@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -68,19 +69,21 @@ fun RegisterScreen(
             .fillMaxSize()
             .background(Color.White)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 100.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 24.dp, vertical = 32.dp)
+            .imePadding(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
 
-        Spacer(modifier = Modifier.height(60.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         Image(
             painter = painterResource(R.drawable.img),
             contentDescription = "Logo",
-            modifier = Modifier.size(180.dp)
+            modifier = Modifier.size(150.dp)
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = "Get Started!",
@@ -90,7 +93,7 @@ fun RegisterScreen(
 
         Text(
             text = "Create an Account",
-            fontSize = 42.sp,
+            fontSize = 36.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black
         )
@@ -101,7 +104,7 @@ fun RegisterScreen(
             fontSize = 14.sp
         )
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -144,13 +147,13 @@ fun RegisterScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         ElevatedButton(
             onClick = { viewModel.onEvent(RegisterUiEvent.Submit) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(60.dp),
+                .height(56.dp),
             shape = RoundedCornerShape(15.dp),
             colors = ButtonDefaults.elevatedButtonColors(
                 containerColor = NavyBlue,
@@ -179,12 +182,12 @@ fun RegisterScreen(
                 text = "Sign In",
                 color = NavyBlue,
                 fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
+                fontSize = 18.sp,
                 modifier = Modifier.clickable { onRegisterSuccess() } // Navigate to Login
             )
         }
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 

@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myapplication.data.models.Reward
-import com.example.myapplication.screens.tenant.GreenSuccess
 import com.example.myapplication.ui.theme.NavyPrimary
+import com.example.myapplication.ui.theme.SuccessGreen
 
 
 @Composable
@@ -88,7 +88,7 @@ fun RewardsScreen(
                         CircularProgressIndicator(
                             progress = { progress },
                             modifier = Modifier.size(120.dp),
-                            color = GreenSuccess,
+                            color = SuccessGreen,
                             strokeWidth = 10.dp,
                             trackColor = Color.LightGray
                         )
@@ -178,7 +178,7 @@ fun RewardCard(reward: Reward) {
             Text(
                 text = "${reward.points} pts",
                 fontWeight = FontWeight.Bold,
-                color = GreenSuccess
+                color = SuccessGreen
             )
         }
     }

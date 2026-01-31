@@ -15,8 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,10 +49,6 @@ import com.example.myapplication.screens.profile.ProfileScreen
 import com.example.myapplication.screens.reward.RewardsScreen
 import com.example.myapplication.screens.room.RoomListScreen
 import com.example.myapplication.screens.tenant.TenantHomeScreen
-
-
-// New color for the selected item pill
-val NavyPrimary = Color(0xFF1A3D63)
 
 @Composable
 fun MainAppScreen(
@@ -133,20 +131,29 @@ fun MainAppScreen(
 fun StyledBottomBar(navController: NavHostController, items: List<BottomNavItem>) {
     var selectedRoute by remember { mutableStateOf(BottomNavItem.Home.route) }
 
-    NavigationBar(
+    Surface(
         modifier = Modifier
-            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
-        containerColor = Color.White,
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp // Remove default tint
     ) {
-        items.forEach { item ->
-            val isSelected = selectedRoute == item.route
-            StyledNavigationItem(item = item, isSelected = isSelected) {
-                selectedRoute = item.route
-                navController.navigate(item.route) {
-                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                    launchSingleTop = true
-                    restoreState = true
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 40.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEach { item ->
+                val isSelected = selectedRoute == item.route
+                StyledNavigationItem(item = item, isSelected = isSelected) {
+                    selectedRoute = item.route
+                    navController.navigate(item.route) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
             }
         }
@@ -159,24 +166,22 @@ fun RowScope.StyledNavigationItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-
     Box(
         modifier = Modifier
-            .weight(1f)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         // The visual pill element
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(25.dp))
-                .background(if (isSelected) NavyPrimary else Color.Transparent)
-                .padding(horizontal = 20.dp, vertical = 15.dp),
+                .clip(RoundedCornerShape(35.dp))
+                .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
             val icon = if (isSelected || item.route == BottomNavItem.Home.route) item.activeIcon else item.inactiveIcon
-            val tint = if (isSelected) Color.White else NavyPrimary
+            val tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
 
             when (icon) {
                 is ImageVector -> Icon(
@@ -198,8 +203,8 @@ fun RowScope.StyledNavigationItem(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = item.label,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Thin,
                         fontSize = 14.sp
                     )
                 }

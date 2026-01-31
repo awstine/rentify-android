@@ -29,10 +29,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myapplication.data.models.MachineSession
 import com.example.myapplication.data.models.WashingMachine
+import com.example.myapplication.ui.theme.LightGreen
+import com.example.myapplication.ui.theme.MediumAquamarine
 import java.text.SimpleDateFormat
 import java.util.Locale
-
-val GreenSuccess = Color(0xFF4CAF50)
 
 @Composable
 fun TenantHomeScreen(
@@ -118,7 +118,7 @@ fun TenantHomeScreen(
                      item {
                         Text(
                             text = "No washing machines available.",
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             fontSize = 14.sp
                         )
                     }
@@ -176,7 +176,7 @@ fun HeaderSection(userName: String, roomNumber: String) {
                     text = "Hello,",
                     fontSize = 42.sp,
                     fontWeight = FontWeight.ExtraLight,
-                    //color = MaterialTheme.colorScheme.onBackground
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = "$userName",
@@ -222,14 +222,14 @@ fun RentStatusCard(
 ) {
     val cardBrush = if (isPaid) {
         Brush.verticalGradient(
-            colors = listOf(Color(0xFF66BB6A), Color(0xFF388E3C))
+            colors = listOf(LightGreen, MediumAquamarine)
         )
     } else {
         Brush.verticalGradient(
-            colors = listOf(MaterialTheme.colorScheme.primary, Color(0xFF002952)) // Darker shade of primary
+            colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary) 
         )
     }
-    val contentColor = Color.White
+    val contentColor = MaterialTheme.colorScheme.onPrimary
 
     Card(
         shape = RoundedCornerShape(24.dp),
@@ -245,7 +245,7 @@ fun RentStatusCard(
             Icon(
                 imageVector = Icons.Default.AccountBalanceWallet,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.1f),
+                tint = contentColor.copy(alpha = 0.1f),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .size(80.dp)
@@ -267,12 +267,12 @@ fun RentStatusCard(
 
                     if (isPaid) {
                         Surface(
-                            color = Color.White.copy(alpha = 0.2f),
+                            color = contentColor.copy(alpha = 0.2f),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
                                 text = "PAID",
-                                color = Color.White,
+                                color = contentColor,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -285,7 +285,7 @@ fun RentStatusCard(
                         ) {
                             Text(
                                 text = "DUE",
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onError,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -316,7 +316,7 @@ fun RentStatusCard(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
+                            containerColor = contentColor,
                             contentColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
@@ -333,7 +333,7 @@ fun WashingMachineCard(machine: WashingMachine, userSession: MachineSession?) {
     val isOccupied = machine.status == "in_use"
     val isMine = userSession != null
     
-    val statusColor = if (isOccupied) MaterialTheme.colorScheme.error else GreenSuccess
+    val statusColor = if (isOccupied) MaterialTheme.colorScheme.error else LightGreen
     val statusText = if (isOccupied) {
         if (isMine) "In Use (You)" else "Occupied"
     } else "Available"
@@ -372,14 +372,14 @@ fun WashingMachineCard(machine: WashingMachine, userSession: MachineSession?) {
                     Text(text = statusText, color = statusColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
                 if (isMine && userSession?.end_time != null) {
-                     Text(text = "Ends at: ${userSession.end_time}", fontSize = 10.sp, color = Color.Gray)
+                     Text(text = "Ends at: ${userSession.end_time}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 }
             }
 
             Button(
                 onClick = { /* Start Session */ },
                 enabled = !isOccupied,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, disabledContainerColor = Color.LightGray),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                 modifier = Modifier.height(36.dp)
             ) {
@@ -407,6 +407,6 @@ fun QuickActionItem(
             Icon(imageVector = icon, contentDescription = label, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text = label, fontSize = 12.sp, color = Color.Gray)
+        Text(text = label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
     }
 }

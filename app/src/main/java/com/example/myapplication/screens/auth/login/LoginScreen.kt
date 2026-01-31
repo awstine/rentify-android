@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -68,20 +69,22 @@ fun LoginScreen(
             .fillMaxSize()
             .background(Color.White) // KEEP WHITE BACKGROUND
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 100.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 24.dp, vertical = 32.dp)
+            .imePadding(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
 
-        Spacer(modifier = Modifier.height(60.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // LOGO
         Image(
             painter = painterResource(R.drawable.img),
             contentDescription = "Logo",
-            modifier = Modifier.size(180.dp)
+            modifier = Modifier.size(150.dp)
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // TITLE
         Text(
@@ -92,7 +95,7 @@ fun LoginScreen(
 
         Text(
             text = "Sign in",
-            fontSize = 42.sp,
+            fontSize = 36.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black
         )
@@ -103,7 +106,7 @@ fun LoginScreen(
             fontSize = 14.sp
         )
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // INPUT CARD CONTAINER (LIKE SCREENSHOT)
         Surface(
@@ -155,14 +158,14 @@ fun LoginScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // SIGN IN BUTTON (PILL)
         ElevatedButton(
             onClick = { viewModel.onEvent(LoginUiEvent.Submit) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(60.dp),
+                .height(56.dp),
             shape = RoundedCornerShape(15.dp),
             colors = ButtonDefaults.elevatedButtonColors(
                 containerColor = NavyBlue,
@@ -191,13 +194,13 @@ fun LoginScreen(
         // SIGN UP TEXT
         Text(
             text = "Sign up",
-            fontSize = 20.sp,
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = NavyBlue,
             modifier = Modifier.clickable { onNavigateToRegister() }
         )
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
