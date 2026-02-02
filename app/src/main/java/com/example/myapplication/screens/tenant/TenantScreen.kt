@@ -117,9 +117,10 @@ fun TenantHomeScreen(
                 } else if (state.activeBooking != null) {
                      item {
                         Text(
-                            text = "No washing machines available.",
+                            text = "Washing mashing coming soon.",
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            fontSize = 14.sp
+                            fontWeight = FontWeight.Light,
+                            fontSize = 15.sp
                         )
                     }
                 }
@@ -133,6 +134,9 @@ fun TenantHomeScreen(
                         color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceAround
@@ -174,13 +178,13 @@ fun HeaderSection(userName: String, roomNumber: String) {
             Column {
                 Text(
                     text = "Hello,",
-                    fontSize = 42.sp,
-                    fontWeight = FontWeight.ExtraLight,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Light,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = "$userName",
-                    fontSize = 42.sp,
+                    fontSize = 38.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
