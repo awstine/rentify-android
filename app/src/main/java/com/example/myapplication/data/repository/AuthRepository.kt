@@ -1,17 +1,53 @@
 package com.example.myapplication.data.repository
 
 import android.util.Log
+import com.example.myapplication.data.local.UserDao
 import com.example.myapplication.data.models.User
 import com.example.myapplication.di.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import javax.inject.Inject
 
-class AuthRepository {
+class AuthRepository @Inject constructor(
+    private val userDao: UserDao
+) {
+
+    private fun <T> networkBoundResource(
+        query: () -> Flow<T>,
+        fetch: suspend () -> T,
+        saveFetchResult: suspend (T) -> Unit
+    ): Flow<Result<T>> = flow {
+        val data = query().first()
+        if (data != null) {
+            emit(Result.success(data))
+        }
+
+        val fetchResult = try {
+            Result.success(fetch())
+        } catch (throwable: Throwable) {
+            Result.failure(throwable)
+        }
+
+        if (fetchResult.isSuccess) {
+            saveFetchResult(fetchResult.getOrThrow())
+            emit(Result.success(query().first()))
+        } else {
+            if (data != null) {
+                emit(Result.success(data))
+            } else {
+                emit(Result.failure(fetchResult.exceptionOrNull()!!))
+            }
+        }
+    }.flowOn(Dispatchers.IO)
 
     suspend fun signUp(email: String, password: String, userData: User): Result<User> {
         return withContext(Dispatchers.IO) {
@@ -35,6 +71,7 @@ class AuthRepository {
                 Log.d("AuthRepository", "Auth signup successful, userId: $userId")
 
                 val createdUser = userData.copy(id = userId)
+                userDao.insertUser(createdUser)
                 Result.success(createdUser)
 
             } catch (e: Exception) {
@@ -73,70 +110,20 @@ class AuthRepository {
     }
 
     suspend fun getCurrentUser(): User? {
-        return getUserProfile().getOrNull()
+        val session = SupabaseClient.client.auth.currentSessionOrNull()
+        return if (session != null) {
+            getUserProfile(session.user!!.id).first().getOrNull()
+        } else {
+            null
+        }
     }
 
-    suspend fun getUserProfile(): Result<User> {
-        return withContext(Dispatchers.IO) {
-            try {
-                // ** THE FIX IS HERE **
-                // Ensure the session is loaded from storage before trying to access it.
-                SupabaseClient.client.auth.loadFromStorage()
-                
-                val session = SupabaseClient.client.auth.currentSessionOrNull()
-                if (session == null) {
-                     return@withContext Result.failure(Exception("No active session"))
-                }
-                
-                val authUser = session.user
-                if (authUser == null) {
-                     return@withContext Result.failure(Exception("Session user is null"))
-                }
-
-                // 1. Try fetching profile from DB
-                try {
-                    val profile = SupabaseClient.client.postgrest["profiles"]
-                        .select { filter { eq("id", authUser.id) } }
-                        .decodeSingle<User>()
-                    return@withContext Result.success(profile)
-                } catch (e: Exception) {
-                    Log.w("AuthRepo", "Profile fetch failed. This usually means the row is missing. Attempting self-repair...", e)
-                }
-
-                // 2. Construct Fallback User from Metadata
-                val meta = authUser.userMetadata
-                val role = meta?.get("role")?.toString()?.trim('"') ?: "tenant"
-                val fullName = meta?.get("full_name")?.toString()?.trim('"')
-                val phone = meta?.get("phone_number")?.toString()?.trim('"')
-                
-                val fallbackUser = User(
-                    id = authUser.id,
-                    email = authUser.email,
-                    phone_number = phone,
-                    id_number = null,
-                    role = role,
-                    full_name = fullName,
-                    created_at = authUser.createdAt?.toString()
-                )
-                
-                // 3. Attempt Self-Repair: Insert the missing profile row.
-                // This is crucial for RLS policies on other tables (like 'rooms') to work.
-                try {
-                    Log.d("AuthRepo", "Attempting to upsert missing profile for user ${authUser.id}")
-                    SupabaseClient.client.postgrest["profiles"].upsert(fallbackUser)
-                    Log.d("AuthRepo", "Self-repair successful! Profile created.")
-                } catch (e: Exception) {
-                    Log.e("AuthRepo", "Self-repair failed. RLS on 'profiles' might block this, or other DB error.", e)
-                }
-                
-                // Return the user data, which is now backed by a DB row.
-                Result.success(fallbackUser)
-
-            } catch (e: Exception) {
-                Log.e("AuthRepository", "getUserProfile fatal error", e)
-                Result.failure(e)
-            }
-        }
+    fun getUserProfile(userId: String): Flow<Result<User?>> {
+        return networkBoundResource(
+            query = { userDao.getUser(userId) },
+            fetch = { SupabaseClient.client.postgrest["profiles"].select { filter { eq("id", userId) } }.decodeSingle() },
+            saveFetchResult = { user -> if (user != null) userDao.insertUser(user) }
+        )
     }
 
     suspend fun resetPassword(email: String): Result<Unit> {

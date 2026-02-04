@@ -4,10 +4,11 @@ import java.io.FileInputStream
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
-    kotlin("plugin.serialization") version "2.0.21"
+    // alias(libs.plugins.kotlin.compose) // REMOVED
+    kotlin("plugin.serialization") // REMOVED version "2.0.21"
     id("com.google.dagger.hilt.android")
     id("kotlin-kapt")
+    id("com.google.devtools.ksp")
 }
 
 val localProperties = Properties().apply {
@@ -56,7 +57,8 @@ android {
         buildConfig = true // Enable BuildConfig generation
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
+        // Kotlin 1.9.22 requires Compose Compiler 1.5.8
+        kotlinCompilerExtensionVersion = "1.5.8"
     }
 }
 
@@ -98,4 +100,9 @@ dependencies {
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
     implementation("androidx.compose.ui:ui-text-google-fonts:1.2.0-alpha07")
+
+    // Room
+    implementation("androidx.room:room-runtime:2.8.4")
+    ksp("androidx.room:room-compiler:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
 }

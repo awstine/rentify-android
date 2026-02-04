@@ -5,10 +5,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.models.PaymentTransaction
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.PaymentRepository
-import com.example.myapplication.data.repository.PaymentTransaction
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -37,17 +38,18 @@ class HistoryViewModel @Inject constructor(
 
             val user = authRepository.getCurrentUser()
             if (user != null) {
-                val result = paymentRepository.getTenantPaymentHistory(user.id)
-                if (result.isSuccess) {
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        transactions = result.getOrNull() ?: emptyList()
-                    )
-                } else {
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        error = result.exceptionOrNull()?.message
-                    )
+                paymentRepository.getTenantPaymentHistory(user.id).collect { result ->
+                    if (result.isSuccess) {
+                        uiState = uiState.copy(
+                            isLoading = false,
+                            transactions = result.getOrNull() ?: emptyList()
+                        )
+                    } else {
+                        uiState = uiState.copy(
+                            isLoading = false,
+                            error = result.exceptionOrNull()?.message
+                        )
+                    }
                 }
             } else {
                 uiState = uiState.copy(isLoading = false, error = "User not logged in")

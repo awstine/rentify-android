@@ -1,218 +1,193 @@
 package com.example.myapplication.data.repository
 
 import android.util.Log
+import com.example.myapplication.data.local.PropertyDao
+import com.example.myapplication.data.local.RoomDao
 import com.example.myapplication.data.models.Property
 import com.example.myapplication.data.models.Room
 import com.example.myapplication.di.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import javax.inject.Inject
 
+class PropertyRepository @Inject constructor(
+    private val propertyDao: PropertyDao,
+    private val roomDao: RoomDao
+) {
 
-class PropertyRepository {
-    suspend fun getPropertiesForLandlord(landlordId: String): Result<List<Property>> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val properties = SupabaseClient.client.postgrest["properties"]
-                    .select{filter{eq("landlord_id", landlordId)}}
-                    .decodeList<Property>()
-                Result.success(properties)
-            } catch (e: Exception) {
-                Result.failure(e)
+    private fun <T> networkBoundResource(
+        query: () -> Flow<T>,
+        fetch: suspend () -> T,
+        saveFetchResult: suspend (T) -> Unit
+    ): Flow<Result<T>> = flow {
+        val data = query().first()
+        // This is a simplified version, in a real app you'd want to check for staleness
+        if (data != null) {
+            emit(Result.success(data))
+        }
+
+        val fetchResult = try {
+            Result.success(fetch())
+        } catch (throwable: Throwable) {
+            Log.e("PropertyRepository", "Network fetch failed", throwable)
+            Result.failure(throwable)
+        }
+
+        if (fetchResult.isSuccess) {
+            saveFetchResult(fetchResult.getOrThrow())
+            // After saving, query the data again to get the updated flow
+            emit(Result.success(query().first()))
+        } else {
+            // If network fails, still try to emit local data if available
+            if (data != null) {
+                emit(Result.success(data))
+            } else {
+                emit(Result.failure(fetchResult.exceptionOrNull()!!))
             }
         }
+    }.flowOn(Dispatchers.IO)
+
+    fun getPropertiesForLandlord(landlordId: String): Flow<Result<List<Property>>> {
+        return networkBoundResource(
+            query = { propertyDao.getPropertiesForLandlord(landlordId) },
+            fetch = { SupabaseClient.client.postgrest["properties"].select{filter{eq("landlord_id", landlordId)}}.decodeList() },
+            saveFetchResult = { properties -> propertyDao.insertProperties(properties) }
+        )
     }
 
-    suspend fun getAvailableProperties(): Result<List<Property>> {
-        return withContext(Dispatchers.IO) {
-            try {
-                // Optimized: The RLS policy "Tenants view available properties" on Supabase
-                // now handles the filtering. We simply fetch the properties visible to us.
-                val properties = SupabaseClient.client.postgrest["properties"]
-                    .select()
-                    .decodeList<Property>()
-                Result.success(properties)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
+    fun getAvailableProperties(): Flow<Result<List<Property>>> {
+        return networkBoundResource(
+            query = { propertyDao.getProperties() },
+            fetch = { SupabaseClient.client.postgrest["properties"].select().decodeList() },
+            saveFetchResult = { properties -> propertyDao.insertProperties(properties) }
+        )
     }
 
-    private suspend fun getAvailableRoomsForProperty(propertyId: String): Result<List<Room>> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val rooms = SupabaseClient.client.postgrest["rooms"]
-                    .select {
-                        filter {
-                            eq("property_id", propertyId)
-                            eq("is_available", true)
-                        }
-                    }
-                    .decodeList<Room>()
-                Result.success(rooms)
-            } catch (e: Exception) {
-                Result.failure(e)
+    fun getAllAvailableRooms(): Flow<Result<List<Room>>> {
+        return networkBoundResource(
+            query = { roomDao.getRooms() },
+            fetch = {
+                Log.d("PropertyRepository", "Fetching available rooms from network")
+                SupabaseClient.client.postgrest["rooms"].select { filter { eq("is_available", true) } }.decodeList()
+            },
+            saveFetchResult = { rooms ->
+                Log.d("PropertyRepository", "Saving ${rooms.size} rooms to local database")
+                roomDao.insertRooms(rooms)
             }
-        }
+        )
     }
 
-    suspend fun getAllAvailableRooms(): Result<List<Room>> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val rooms = SupabaseClient.client.postgrest["rooms"]
-                    .select {
-                        filter {
-                            eq("is_available", true)
-                        }
-                    }
-                    .decodeList<Room>()
-                Log.d("PropertyRepository", "Fetched ${rooms.size} available rooms")
-                Result.success(rooms)
-            } catch (e: Exception) {
-                Log.e("PropertyRepository", "Error fetching rooms", e)
-                Result.failure(e)
-            }
-        }
+    fun getAllRooms(): Flow<Result<List<Room>>> {
+        return networkBoundResource(
+            query = { roomDao.getRooms() },
+            fetch = { SupabaseClient.client.postgrest["rooms"].select().decodeList() },
+            saveFetchResult = { rooms -> roomDao.insertRooms(rooms) }
+        )
     }
 
-    suspend fun getAllRooms(): Result<List<Room>> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val rooms = SupabaseClient.client.postgrest["rooms"]
-                    .select()
-                    .decodeList<Room>()
-                Result.success(rooms)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
-    }
+    // Note: getPropertiesByIds, getRoom, getProperty are not converted to networkBoundResource
+    // as they are single-shot operations and the offline caching strategy might differ.
+    // You could convert them if you have a clear offline-first requirement for these specific calls.
 
     suspend fun getPropertiesByIds(ids: List<String>): Result<List<Property>> {
         if (ids.isEmpty()) return Result.success(emptyList())
-        return withContext(Dispatchers.IO) {
-            try {
-                val properties = SupabaseClient.client.postgrest["properties"]
-                    .select {
-                        filter {
-                            isIn("id", ids)
-                        }
+         try {
+            val properties = SupabaseClient.client.postgrest["properties"]
+                .select {
+                    filter {
+                        isIn("id", ids)
                     }
-                    .decodeList<Property>()
-                Result.success(properties)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
+                }
+                .decodeList<Property>()
+            return Result.success(properties)
+        } catch (e: Exception) {
+            return Result.failure(e)
         }
     }
 
     suspend fun getRoom(roomId: String): Result<Room> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val room = SupabaseClient.client.postgrest["rooms"]
-                    .select {
-                        filter {
-                            eq("id", roomId)
-                        }
+        try {
+            val room = SupabaseClient.client.postgrest["rooms"]
+                .select {
+                    filter {
+                        eq("id", roomId)
                     }
-                    .decodeSingle<Room>()
-                Result.success(room)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
+                }
+                .decodeSingle<Room>()
+            return Result.success(room)
+        } catch (e: Exception) {
+            return Result.failure(e)
         }
     }
     
     suspend fun getProperty(propertyId: String): Result<Property> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val property = SupabaseClient.client.postgrest["properties"]
-                    .select {
-                        filter {
-                            eq("id", propertyId)
-                        }
+        try {
+            val property = SupabaseClient.client.postgrest["properties"]
+                .select {
+                    filter {
+                        eq("id", propertyId)
                     }
-                    .decodeSingle<Property>()
-                Result.success(property)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
-    }
-    // ... inside PropertyRepository class
-
-    suspend fun createProperty(property: Property): Result<Property> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val createdProperty = SupabaseClient.client.postgrest["properties"]
-                    .insert(property) {
-                        select() // <--- THIS IS CRITICAL. It asks Supabase to return the new row.
-                    }
-                    .decodeSingle<Property>()
-                Result.success(createdProperty)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
+                }
+                .decodeSingle<Property>()
+            return Result.success(property)
+        } catch (e: Exception) {
+            return Result.failure(e)
         }
     }
 
-    suspend fun createRoom(room: Room): Result<Room> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val createdRoom = SupabaseClient.client.postgrest["rooms"]
-                    .insert(room) {
-                        select() // <--- THIS IS CRITICAL
-                    }
-                    .decodeSingle<Room>()
-                Result.success(createdRoom)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
+    suspend fun createProperty(property: Property): Result<Unit> {
+        try {
+            SupabaseClient.client.postgrest["properties"].insert(property)
+            return Result.success(Unit)
+        } catch (e: Exception) {
+            return Result.failure(e)
         }
     }
 
-    suspend fun updateRoom(room: Room): Result<Room> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val updatedRoom = SupabaseClient.client.postgrest["rooms"]
-                    .update(room) {
-                        filter {
-                            eq("id", room.id)
-                        }
-                        select()
-                    }
-                    .decodeSingle<Room>()
-                Result.success(updatedRoom)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
+    suspend fun createRoom(room: Room): Result<Unit> {
+        try {
+            SupabaseClient.client.postgrest["rooms"].insert(room)
+            return Result.success(Unit)
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
+    }
+
+    suspend fun updateRoom(room: Room): Result<Unit> {
+        try {
+            SupabaseClient.client.postgrest["rooms"].update(room) { filter { eq("id", room.id) } }
+            return Result.success(Unit)
+        } catch (e: Exception) {
+            return Result.failure(e)
         }
     }
 
     suspend fun deleteRoom(roomId: String): Result<Unit> {
-        return withContext(Dispatchers.IO) {
-            try {
-                SupabaseClient.client.postgrest["rooms"]
-                    .delete {
-                        filter {
-                            eq("id", roomId)
-                        }
-                    }
-                Result.success(Unit)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
+        try {
+            SupabaseClient.client.postgrest["rooms"].delete { filter { eq("id", roomId) } }
+            return Result.success(Unit)
+        } catch (e: Exception) {
+            return Result.failure(e)
         }
     }
 
-    suspend fun getRoomsForLandlord(landlordId: String): Result<List<Room>> {
-        return withContext(Dispatchers.IO) {
+    fun getRoomsForLandlord(landlordId: String): Flow<Result<List<Room>>> {
+        // This logic is a bit more complex. We first get the properties of the landlord,
+        // then get the rooms for those properties. This might require a more sophisticated
+        // offline strategy, potentially involving database relations.
+        // For now, we'll keep it as a direct network call, but this is a candidate for improvement.
+        return flow {
             try {
-                val propertiesResult = getPropertiesForLandlord(landlordId)
-                val properties = propertiesResult.getOrNull() ?: emptyList()
+                val propertiesResult = getPropertiesForLandlord(landlordId).first()
+                val properties = propertiesResult.getOrThrow()
                 
                 if (properties.isEmpty()) {
-                    return@withContext Result.success(emptyList())
+                    emit(Result.success(emptyList()))
+                    return@flow
                 }
 
                 val propertyIds = properties.map { it.id }
@@ -224,10 +199,10 @@ class PropertyRepository {
                         }
                     }
                     .decodeList<Room>()
-                Result.success(rooms)
+                emit(Result.success(rooms))
             } catch (e: Exception) {
-                Result.failure(e)
+                emit(Result.failure(e))
             }
-        }
+        }.flowOn(Dispatchers.IO)
     }
 }

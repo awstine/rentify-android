@@ -8,7 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.models.User
 import com.example.myapplication.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,50 +22,46 @@ data class ProfileUiState(
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
-    
+
     var uiState by mutableStateOf(ProfileUiState())
         private set
-        
+
     init {
         loadUserProfile()
     }
-    
+
     fun loadUserProfile() {
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, error = null)
-            
-            var user: User? = null
-            var attempt = 0
-            var lastError: String? = null
-            
-            // Retry logic: try 3 times with 1s delay
-            while (user == null && attempt < 3) {
-                val result = authRepository.getUserProfile()
-                if (result.isSuccess) {
-                    user = result.getOrNull()
-                } else {
-                    lastError = result.exceptionOrNull()?.message
-                    if (attempt < 2) delay(1000)
-                }
-                attempt++
-            }
-
+            val user = authRepository.getCurrentUser()
             if (user != null) {
-                uiState = uiState.copy(isLoading = false, user = user)
+                authRepository.getUserProfile(user.id).collect { result ->
+                    if (result.isSuccess) {
+                        uiState = uiState.copy(
+                            isLoading = false,
+                            user = result.getOrNull()
+                        )
+                    } else {
+                        uiState = uiState.copy(
+                            isLoading = false,
+                            error = result.exceptionOrNull()?.message
+                        )
+                    }
+                }
             } else {
-                uiState = uiState.copy(isLoading = false, error = lastError ?: "User not found")
+                uiState = uiState.copy(isLoading = false, error = "User not logged in")
             }
         }
     }
-    
+
     fun signOut(onSignOutSuccess: () -> Unit) {
-         viewModelScope.launch {
+        viewModelScope.launch {
             val result = authRepository.signOut()
-             if (result.isSuccess) {
-                 onSignOutSuccess()
-             } else {
-                 uiState = uiState.copy(error = "Failed to sign out")
-             }
-         }
+            if (result.isSuccess) {
+                onSignOutSuccess()
+            } else {
+                uiState = uiState.copy(error = "Failed to sign out")
+            }
+        }
     }
 }

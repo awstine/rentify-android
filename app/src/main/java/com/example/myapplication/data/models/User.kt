@@ -1,11 +1,14 @@
 package com.example.myapplication.data.models
 
-// User.kt
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+@Entity(tableName = "users")
 data class User(
+    @PrimaryKey
     val id: String,
     val email: String?,
     @SerialName("phone_number")
