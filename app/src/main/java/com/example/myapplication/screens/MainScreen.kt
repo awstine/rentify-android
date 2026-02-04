@@ -143,7 +143,7 @@ fun StyledBottomBar(navController: NavHostController, items: List<BottomNavItem>
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(vertical = 40.dp),
+                .padding(vertical = 25.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {

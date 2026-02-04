@@ -3,44 +3,22 @@ package com.example.myapplication.screens.profile
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,210 +28,249 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.myapplication.R // Assuming you have a drawable resource
+import com.example.myapplication.R
+import com.example.myapplication.ui.theme.LightBeige
 
-@OptIn(ExperimentalMaterial3Api::class)
+// import com.example.myapplication.ui.theme.NavyPrimary // Uncomment if you have this
+
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
-    onSignOut: () -> Unit = {} // Add navigation callback
+    onSignOut: () -> Unit = {}
 ) {
     val state = viewModel.uiState
     var expandedCard by remember { mutableStateOf<String?>(null) }
+
+    // Colors matching the "Clean Blue/White" aesthetic
+    val backgroundColor = Color(0xFFF3F5F9)
+    val primaryTextColor = Color(0xFF1E232C)
+    val secondaryTextColor = Color(0xFF8391A1)
+    val cardColor = Color.White
+
+    // Replace with your NavyPrimary if available
+    val iconTint = Color(0xFF1E232C)
 
     LaunchedEffect(Unit) {
         viewModel.loadUserProfile()
     }
 
     Scaffold(
+        //containerColor = backgroundColor,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text="Profile",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                        },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+            // Custom simplified header to match the image (No back button)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, bottom = 8.dp)
+                    .padding(horizontal = 24.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Text(
+                    text = "Profile",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
                 )
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
+            }
+        }
     ) { paddingValues ->
         if (state.isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = iconTint)
             }
         } else if (state.error != null) {
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Error: ${state.error}", color = Color.Red, modifier = Modifier.padding(16.dp))
-                    Button(onClick = { viewModel.loadUserProfile() }) {
-                        Text("Retry")
-                    }
-
-                    // Allow sign out even if profile load fails
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = { viewModel.signOut(onSignOut) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-                    ) {
-                        Text("Sign Out")
-                    }
-                }
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = "Error: ${state.error}", color = Color.Red)
             }
         } else {
+            val user = state.user
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(16.dp),
+                    .padding(horizontal = 24.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_launcher_background), // Replace with a real profile image
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                // 1. TOP CARD: User Info
+                    Column(
+                        modifier = Modifier
+                            .padding(vertical = 32.dp)
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_launcher_background),
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier
+                                .size(100.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = user?.full_name ?: "Guest User",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            color = primaryTextColor
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = user?.email ?: "No email",
+                            color = secondaryTextColor,
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        // Badge for Role
+                        Surface(
+                            color = Color(0xFFE0F7FA), // Light cyan for badge
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = user?.role?.uppercase() ?: "TENANT",
+                                color = Color(0xFF006064),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
 
-                val user = state.user
 
-                Text(
-                    text = user?.full_name ?: "Unknown User",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
-                )
-                Text(
-                    text = user?.email ?: "No email",
-                    color = Color.Gray,
-                    fontSize = 14.sp
-                )
-                Text(
-                    text = user?.role?.uppercase() ?: "TENANT",
-                    color = Color.Gray,
-                    fontSize = 14.sp
-                )
+                //Spacer(modifier = Modifier.height(4.dp))
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-//                Button(
-//                    onClick = { /* Handle Edit Profile click */ },
-//                    shape = RoundedCornerShape(8.dp)
-//                ) {
-//                    Icon(Icons.Default.Edit, contentDescription = "Edit Profile")
-//                    Spacer(modifier = Modifier.width(8.dp))
-//                    Text("Edit Profile")
-//                }
-
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                // 2. BOTTOM CARD: Menu Options List
+                // We wrap all items in ONE card to look like the screenshot
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = cardColor),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                Text(
-                    text="Personal information",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                    Column(modifier = Modifier.padding(vertical = 12.dp)) {
+
+                        ProfileListRow(
+                            icon = Icons.Default.Badge,
+                            title = "ID Number",
+                            subtitle = user?.id_number ?: "Not set",
+                            isExpanded = expandedCard == "ID",
+                            onClick = { expandedCard = if (expandedCard == "ID") null else "ID" }
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
+
+                        ProfileListRow(
+                            icon = Icons.Default.Phone,
+                            title = "Phone Number",
+                            subtitle = user?.phone_number ?: "Not set",
+                            isExpanded = expandedCard == "Phone",
+                            onClick = { expandedCard = if (expandedCard == "Phone") null else "Phone" }
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
+
+                        ProfileListRow(
+                            icon = Icons.Default.Email,
+                            title = "Email Address",
+                            subtitle = user?.email ?: "Not set",
+                            isExpanded = expandedCard == "Email",
+                            onClick = { expandedCard = if (expandedCard == "Email") null else "Email" }
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
+
+                        // Sign Out (Styled slightly differently as an action)
+                        ProfileListRow(
+                            icon = Icons.Default.ExitToApp,
+                            title = "Sign Out",
+                            subtitle = null,
+                            isExpanded = false,
+                            isDestructive = true,
+                            onClick = { viewModel.signOut(onSignOut) }
+                        )
+                    }
                 }
 
-                Spacer(Modifier.height(16.dp))
-
-                ProfileMenuItem(
-                    icon = Icons.Default.Person,
-                    text = "ID Number",
-                    description = user?.id_number ?: "Not set",
-                    isExpanded = expandedCard == "ID Number",
-                    onClick = {
-                        expandedCard = if (expandedCard == "ID Number") null else "ID Number"
-                    }
-                )
-                ProfileMenuItem(
-                    icon = Icons.Default.Email,
-                    text = "Email",
-                    description = user?.email ?: "No email",
-                    isExpanded = expandedCard == "Email",
-                    onClick = {
-                        expandedCard = if (expandedCard == "Email") null else "Email"
-                    }
-                )
-                ProfileMenuItem(
-                    icon = Icons.Default.Phone,
-                    text = "Phone Number",
-                    description = user?.phone_number ?: "No phone",
-                    isExpanded = expandedCard == "Phone Number",
-                    onClick = {
-                        expandedCard = if (expandedCard == "Phone Number") null else "Phone Number"
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(36.dp))
-
-                ProfileMenuItem(
-                    icon = Icons.Default.ExitToApp,
-                    text = "Sign Out",
-                    isExpanded = false, // Sign out is just a button, no description
-                    onClick = { viewModel.signOut(onSignOut) }
-                )
+                Spacer(modifier = Modifier.height(50.dp))
             }
         }
     }
 }
 
 @Composable
-private fun ProfileMenuItem(
+fun ProfileListRow(
     icon: ImageVector,
-    text: String,
-    description: String? = null,
+    title: String,
+    subtitle: String?,
     isExpanded: Boolean,
+    isDestructive: Boolean = false,
     onClick: () -> Unit
 ) {
-    Card(
+    val rotation by animateFloatAsState(if (isExpanded) 90f else 0f, label = "arrow")
+    val textColor = if (isDestructive) Color.Red else Color(0xFF1E232C)
+    val iconBgColor = if (isDestructive) Color(0xFFFFEBEE) else Color(0xFFF5F6F8)
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .clickable { onClick() }
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            // Icon with circle background
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(iconBgColor),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = text, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(text, modifier = Modifier.weight(1f))
-                if (description != null) {
-                    val rotation: Float by animateFloatAsState(if (isExpanded) 90f else 0f, label = "")
-                    Icon(
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = "Arrow",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.rotate(rotation)
-                    )
-                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = textColor,
+                    modifier = Modifier.size(20.dp)
+                )
             }
-            if (description != null) {
-                AnimatedVisibility(visible = isExpanded) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = description, style = MaterialTheme.typography.bodyMedium)
-                }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = textColor,
+                modifier = Modifier.weight(1f)
+            )
+
+            // Arrow (Rotates if expandable, invisible if no subtitle/action)
+            if (subtitle != null) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "Expand",
+                    tint = Color.Gray,
+                    modifier = Modifier.rotate(rotation)
+                )
+            }
+        }
+
+        // Expanded Content (The subtitle/value)
+        AnimatedVisibility(visible = isExpanded && subtitle != null) {
+            Column {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = subtitle ?: "",
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(start = 56.dp) // Align with text above
+                )
             }
         }
     }

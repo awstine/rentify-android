@@ -117,7 +117,7 @@ fun TenantHomeScreen(
                 } else if (state.activeBooking != null) {
                      item {
                         Text(
-                            text = "Washing mashing coming soon.",
+                            text = "Washing machine coming soon.",
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             fontWeight = FontWeight.Light,
                             fontSize = 15.sp
