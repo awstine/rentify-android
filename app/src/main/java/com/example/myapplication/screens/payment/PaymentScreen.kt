@@ -151,7 +151,6 @@ fun PaymentScreen(
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFFF5F5F5), RoundedCornerShape(12.dp))
                         .padding(8.dp)
                 ) {
                     // Decrease Button
@@ -160,7 +159,6 @@ fun PaymentScreen(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(Color.White)
                     ) {
                         Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = NavyPrimary)
                     }
@@ -189,7 +187,6 @@ fun PaymentScreen(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(Color.White)
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "Increase", tint = NavyPrimary)
                     }
