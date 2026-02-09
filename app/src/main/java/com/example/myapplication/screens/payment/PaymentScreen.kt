@@ -215,11 +215,6 @@ fun PaymentScreen(
                     singleLine = true
                 )
 
-                if (state.error != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(state.error, color = Color.Red, fontSize = 14.sp, textAlign = TextAlign.Center)
-                }
-
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
@@ -228,7 +223,7 @@ fun PaymentScreen(
                             // Pass 'numberOfMonths' so the database gets updated
                             viewModel.initiatePayment(
                                 bookingId = bookingId,
-                                amount = amount, // <-- CORRECTED: Pass the base amount
+                                amount = totalAmountToPay,
                                 phoneNumber = phoneNumber,
                                 roomNumber = roomNumber,
                                 numberOfMonths = numberOfMonths

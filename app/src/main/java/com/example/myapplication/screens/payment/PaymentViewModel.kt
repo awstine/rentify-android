@@ -6,7 +6,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myapplication.data.models.Booking
 import com.example.myapplication.data.repository.PaymentRepository
 import com.example.myapplication.data.repository.PaymentTransaction
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,9 +19,9 @@ import javax.inject.Inject
 data class PaymentUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isRequestSent: Boolean = false, // STK Push sent
-    val isPaymentComplete: Boolean = false, // Money received & Room allocated
-    val isPaymentFailed: Boolean = false, // Payment failed
+    val isRequestSent: Boolean = false, 
+    val isPaymentComplete: Boolean = false, 
+    val isPaymentFailed: Boolean = false, 
     val paymentMessage: String? = null
 )
 
@@ -38,54 +37,48 @@ class PaymentViewModel @Inject constructor(
     private var statusObserverJob: Job? = null
     private val TAG = "PaymentVM"
 
-    // To prevent processing old "failed" transactions on retry
     private var lastTransactionId: String? = null
 
-    // Updated function signature to accept 'numberOfMonths'
     fun initiatePayment(
         bookingId: String,
         amount: Double,
         phoneNumber: String,
         roomNumber: String,
-        numberOfMonths: Int 
+        numberOfMonths: Int
     ) {
-        // Cancel any existing listeners
         stopPolling()
         statusObserverJob?.cancel()
 
         viewModelScope.launch {
             uiState = uiState.copy(
                 isLoading = true,
+                isRequestSent = true,
                 error = null,
                 isPaymentFailed = false,
-                isPaymentComplete = false,
-                isRequestSent = false
+                isPaymentComplete = false
             )
 
-            // 0. Snapshot current latest transaction ID to ignore it later (Fix for retry bug)
             val currentLatest = paymentRepository.getLatestPaymentTransaction(bookingId)
             lastTransactionId = currentLatest?.id
             Log.d(TAG, "Ignoring transaction ID: $lastTransactionId")
 
             Log.d(TAG, "Initiating Payment for $bookingId for $numberOfMonths months")
 
-            // 1. TRIGGER STK PUSH (With the total amount)
             val result = paymentRepository.initiateMpesaPayment(bookingId, amount, phoneNumber)
 
             if (result.isSuccess) {
                 uiState = uiState.copy(
-                    isRequestSent = true,
+                    isLoading = false,
                     paymentMessage = "Please enter your M-Pesa PIN."
                 )
-
-                // Start observing. We pass numberOfMonths so we can update the DB *after* success.
                 observePayment(bookingId, numberOfMonths)
-
             } else {
+                Log.e(TAG, "STK Push initiation failed", result.exceptionOrNull())
                 uiState = uiState.copy(
                     isLoading = false,
                     isRequestSent = false,
-                    error = result.exceptionOrNull()?.message ?: "Failed to send request"
+                    isPaymentFailed = true,
+                    paymentMessage = "Payment request failed. Please check your connection and try again."
                 )
             }
         }
@@ -95,8 +88,7 @@ class PaymentViewModel @Inject constructor(
         statusObserverJob = viewModelScope.launch {
             paymentRepository.observePaymentTransaction(bookingId).collect { transaction ->
                 if (handlePaymentStatus(transaction, bookingId, numberOfMonths)) {
-                    // Stop collecting if terminal state reached
-                    this.coroutineContext.cancel() // Cancel this job
+                    this.coroutineContext.cancel()
                 }
             }
         }
@@ -106,7 +98,7 @@ class PaymentViewModel @Inject constructor(
     private fun startPolling(bookingId: String, numberOfMonths: Int) {
         pollingJob?.cancel()
         pollingJob = viewModelScope.launch {
-            val timeout = System.currentTimeMillis() + 120000 // 2 minutes
+            val timeout = System.currentTimeMillis() + 120000
 
             while (isActive && !uiState.isPaymentComplete && !uiState.isPaymentFailed && System.currentTimeMillis() < timeout) {
                 delay(3000)
@@ -115,6 +107,18 @@ class PaymentViewModel @Inject constructor(
                 if (handlePaymentStatus(transaction, bookingId, numberOfMonths)) {
                     break
                 }
+            }
+
+            if (isActive && !uiState.isPaymentComplete) {
+                Log.w(TAG, "Polling timed out for booking ID: $bookingId")
+                uiState = uiState.copy(
+                    isPaymentFailed = true,
+                    isLoading = false,
+                    isRequestSent = false,
+                    paymentMessage = "We could not confirm the payment. Please check your M-Pesa or try again."
+                )
+                stopPolling()
+                statusObserverJob?.cancel()
             }
         }
     }
@@ -125,43 +129,29 @@ class PaymentViewModel @Inject constructor(
 
     private suspend fun handlePaymentStatus(transaction: PaymentTransaction?, bookingId: String, numberOfMonths: Int): Boolean {
         if (transaction == null) return false
-        
-        // --- KEY FIX FOR RETRY ---
-        // If the transaction ID is the same as the one we saw BEFORE starting this request,
-        // it means we are seeing stale data (e.g. the previous failure). Ignore it.
+
         if (lastTransactionId != null && transaction.id == lastTransactionId) {
             Log.d(TAG, "Skipping stale transaction: ${transaction.id}")
             return false
         }
-        
+
         val status = transaction.status ?: return false
         val normalizedStatus = status.lowercase().trim()
 
         return when (normalizedStatus) {
             "completed", "success", "paid" -> {
                 Log.d(TAG, "Payment COMPLETED! Finalizing booking...")
-                
-                // CRITICAL FIX: Only NOW do we update the booking in the database
+
                 val updateResult = paymentRepository.updateBookingDuration(bookingId, numberOfMonths)
-                
-                if (updateResult.isSuccess) {
-                     uiState = uiState.copy(
-                        isPaymentComplete = true,
-                        isLoading = false,
-                        isRequestSent = false,
-                        isPaymentFailed = false,
-                        paymentMessage = "Payment Received! Room allocated."
-                    )
-                } else {
-                     uiState = uiState.copy(
-                        isPaymentComplete = true,
-                        isLoading = false,
-                        isRequestSent = false,
-                        isPaymentFailed = false,
-                        paymentMessage = "Payment Received! (Room update pending)"
-                    )
-                }
-                
+
+                uiState = uiState.copy(
+                    isPaymentComplete = true,
+                    isLoading = false,
+                    isRequestSent = false,
+                    isPaymentFailed = false,
+                    paymentMessage = if (updateResult.isSuccess) "Payment Received! Room allocated." else "Payment Received! (Room update pending)"
+                )
+
                 stopPolling()
                 statusObserverJob?.cancel()
                 true
@@ -173,13 +163,13 @@ class PaymentViewModel @Inject constructor(
                     isLoading = false,
                     isRequestSent = false,
                     isPaymentComplete = false,
-                    paymentMessage = "Payment Failed or Cancelled."
+                    paymentMessage = "Payment Failed or Cancelled by user."
                 )
                 stopPolling()
                 statusObserverJob?.cancel()
                 true
             }
-            else -> false // Still pending
+            else -> false
         }
     }
 
