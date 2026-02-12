@@ -1,11 +1,13 @@
 package com.example.myapplication.data.repository
 
+import android.net.Uri
 import android.util.Log
 import com.example.myapplication.data.models.User
 import com.example.myapplication.di.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
@@ -72,6 +74,58 @@ class AuthRepository {
         }
     }
 
+
+    suspend fun uploadProfilePhoto(uri: Uri): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Ensure session exists
+                SupabaseClient.client.auth.loadFromStorage()
+                val session = SupabaseClient.client.auth.currentSessionOrNull()
+                    ?: throw Exception("No active session")
+
+                val userId = session.user?.id ?: throw Exception("User not found in session")
+
+                // Read image bytes
+                val bytes = SupabaseClient.appContext
+                    .contentResolver
+                    .openInputStream(uri)
+                    ?.readBytes()
+                    ?: throw Exception("Failed to read image")
+
+                // Path in bucket
+                val path = "$userId/avatar.jpg"
+
+                // Upload (overwrite allowed)
+                SupabaseClient.client.storage
+                    .from("avatars")
+                    .upload(
+                        path = path,
+                        data = bytes,
+                        upsert = true
+                    )
+
+                // Get public URL
+                val publicUrl = SupabaseClient.client.storage
+                    .from("avatars")
+                    .publicUrl(path)
+
+                // Save URL to profiles table
+                SupabaseClient.client.postgrest["profiles"]
+                    .update({
+                        set("profile_image_url", publicUrl)
+                    }) {
+                        filter { eq("id", userId) }
+                    }
+
+                Result.success(publicUrl)
+
+            } catch (e: Exception) {
+                Log.e("AuthRepository", "Profile photo upload failed", e)
+                Result.failure(e)
+            }
+        }
+    }
+
     suspend fun getCurrentUser(): User? {
         return getUserProfile().getOrNull()
     }
@@ -82,16 +136,12 @@ class AuthRepository {
                 // ** THE FIX IS HERE **
                 // Ensure the session is loaded from storage before trying to access it.
                 SupabaseClient.client.auth.loadFromStorage()
-                
+
                 val session = SupabaseClient.client.auth.currentSessionOrNull()
-                if (session == null) {
-                     return@withContext Result.failure(Exception("No active session"))
-                }
-                
+                    ?: return@withContext Result.failure(Exception("No active session"))
+
                 val authUser = session.user
-                if (authUser == null) {
-                     return@withContext Result.failure(Exception("Session user is null"))
-                }
+                    ?: return@withContext Result.failure(Exception("Session user is null"))
 
                 // 1. Try fetching profile from DB
                 try {
@@ -108,7 +158,7 @@ class AuthRepository {
                 val role = meta?.get("role")?.toString()?.trim('"') ?: "tenant"
                 val fullName = meta?.get("full_name")?.toString()?.trim('"')
                 val phone = meta?.get("phone_number")?.toString()?.trim('"')
-                
+
                 val fallbackUser = User(
                     id = authUser.id,
                     email = authUser.email,
@@ -118,7 +168,7 @@ class AuthRepository {
                     full_name = fullName,
                     created_at = authUser.createdAt?.toString()
                 )
-                
+
                 // 3. Attempt Self-Repair: Insert the missing profile row.
                 // This is crucial for RLS policies on other tables (like 'rooms') to work.
                 try {
@@ -128,7 +178,7 @@ class AuthRepository {
                 } catch (e: Exception) {
                     Log.e("AuthRepo", "Self-repair failed. RLS on 'profiles' might block this, or other DB error.", e)
                 }
-                
+
                 // Return the user data, which is now backed by a DB row.
                 Result.success(fallbackUser)
 

@@ -16,5 +16,7 @@ data class User(
     @SerialName("full_name")
     val full_name: String?,
     @SerialName("created_at")
-    val created_at: String?
+    val created_at: String?,
+    @SerialName("profile_image_url")
+    val profile_image_url: String? = null
 )

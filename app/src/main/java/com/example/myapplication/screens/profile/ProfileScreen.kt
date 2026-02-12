@@ -5,7 +5,16 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,14 +37,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myapplication.R
-import com.example.myapplication.ui.theme.LightBeige
 
-// import com.example.myapplication.ui.theme.NavyPrimary // Uncomment if you have this
 
 @Composable
 fun ProfileScreen(
@@ -98,49 +104,54 @@ fun ProfileScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // 1. TOP CARD: User Info
-                    Column(
+                Column(
+                    modifier = Modifier
+                        .padding(vertical = 32.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_launcher_background),
+                        contentDescription = "Profile Picture",
                         modifier = Modifier
-                            .padding(vertical = 32.dp)
-                            .fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_launcher_background),
-                            contentDescription = "Profile Picture",
-                            modifier = Modifier
-                                .size(100.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = user?.full_name ?: "Guest User",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            color = primaryTextColor
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = user?.email ?: "No email",
-                            color = secondaryTextColor,
-                            fontSize = 14.sp
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        // Badge for Role
-                        Surface(
-                            color = Color(0xFFE0F7FA), // Light cyan for badge
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = user?.role?.uppercase() ?: "TENANT",
-                                color = Color(0xFF006064),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
+                            .size(100.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
 
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = user?.full_name ?: "Guest User",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = primaryTextColor
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = user?.email ?: "No email",
+                        color = secondaryTextColor,
+                        fontSize = 14.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Badge for Role
+                    Surface(
+                        color = Color(0xFFE0F7FA), // Light cyan for badge
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = user?.role?.uppercase() ?: "TENANT",
+                            color = Color(0xFF006064),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
 
                 //Spacer(modifier = Modifier.height(4.dp))
 
@@ -153,7 +164,6 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(vertical = 12.dp)) {
-
                         ProfileListRow(
                             icon = Icons.Default.Badge,
                             title = "ID Number",

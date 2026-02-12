@@ -6,7 +6,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myapplication.data.models.Booking
 import com.example.myapplication.data.repository.PaymentRepository
 import com.example.myapplication.data.repository.PaymentTransaction
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,15 +14,20 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.IOException
+import java.net.SocketTimeoutException
 import javax.inject.Inject
 
 data class PaymentUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isRequestSent: Boolean = false, // STK Push sent
-    val isPaymentComplete: Boolean = false, // Money received & Room allocated
-    val isPaymentFailed: Boolean = false, // Payment failed
-    val paymentMessage: String? = null
+    val isRequestSent: Boolean = false,
+    val isPaymentComplete: Boolean = false,
+    val isPaymentFailed: Boolean = false,
+    val paymentMessage: String? = null,
+    val numberOfMonths: Int = 1,
+    val baseAmount: Double = 0.0,
+    val totalAmount: Double = 0.0
 )
 
 @HiltViewModel
@@ -37,21 +41,39 @@ class PaymentViewModel @Inject constructor(
     private var pollingJob: Job? = null
     private var statusObserverJob: Job? = null
     private val TAG = "PaymentVM"
-
-    // To prevent processing old "failed" transactions on retry
     private var lastTransactionId: String? = null
 
-    // Updated function signature to accept 'numberOfMonths'
-    fun initiatePayment(
-        bookingId: String,
-        amount: Double,
-        phoneNumber: String,
-        roomNumber: String,
-        numberOfMonths: Int 
-    ) {
-        // Cancel any existing listeners
+    fun setPaymentDetails(baseAmount: Double, months: Int) {
+        uiState = uiState.copy(
+            baseAmount = baseAmount,
+            numberOfMonths = months,
+            totalAmount = baseAmount * months
+        )
+    }
+
+    fun resetState() {
+        uiState = uiState.copy(
+            isLoading = false,
+            isRequestSent = false,
+            isPaymentComplete = false,
+            isPaymentFailed = false,
+            error = null,
+            paymentMessage = null
+        )
         stopPolling()
         statusObserverJob?.cancel()
+    }
+
+    fun initiatePayment(
+        bookingId: String,
+        phoneNumber: String,
+        roomNumber: String
+    ) {
+        stopPolling()
+        statusObserverJob?.cancel()
+
+        val currentAmount = uiState.totalAmount
+        val currentMonths = uiState.numberOfMonths
 
         viewModelScope.launch {
             uiState = uiState.copy(
@@ -62,32 +84,62 @@ class PaymentViewModel @Inject constructor(
                 isRequestSent = false
             )
 
-            // 0. Snapshot current latest transaction ID to ignore it later (Fix for retry bug)
             val currentLatest = paymentRepository.getLatestPaymentTransaction(bookingId)
             lastTransactionId = currentLatest?.id
-            Log.d(TAG, "Ignoring transaction ID: $lastTransactionId")
 
-            Log.d(TAG, "Initiating Payment for $bookingId for $numberOfMonths months")
-
-            // 1. TRIGGER STK PUSH (With the total amount)
-            val result = paymentRepository.initiateMpesaPayment(bookingId, amount, phoneNumber)
+            // 1. Initiate the Request
+            val result = paymentRepository.initiateMpesaPayment(bookingId, currentAmount, phoneNumber)
 
             if (result.isSuccess) {
                 uiState = uiState.copy(
                     isRequestSent = true,
                     paymentMessage = "Please enter your M-Pesa PIN."
                 )
-
-                // Start observing. We pass numberOfMonths so we can update the DB *after* success.
-                observePayment(bookingId, numberOfMonths)
-
+                observePayment(bookingId, currentMonths)
             } else {
+                // 2. ERROR HANDLING: Convert technical error to user-friendly text
+                val rawError = result.exceptionOrNull()
+                val friendlyMessage = getUserFriendlyError(rawError)
+
                 uiState = uiState.copy(
                     isLoading = false,
                     isRequestSent = false,
-                    error = result.exceptionOrNull()?.message ?: "Failed to send request"
+                    isPaymentFailed = true,
+                    paymentMessage = friendlyMessage // <--- Use the clean message
                 )
             }
+        }
+    }
+
+    // --- NEW HELPER FUNCTION ---
+    private fun getUserFriendlyError(error: Throwable?): String {
+        if (error == null) return "An unexpected error occurred."
+
+        val message = error.message?.lowercase() ?: ""
+
+        return when {
+            // Internet / Connection Issues
+            error is IOException || message.contains("unable to resolve host") || message.contains("no address associated") -> {
+                "No internet connection. Please check your data or Wi-Fi."
+            }
+            // Timeout (Server took too long)
+            error is SocketTimeoutException || message.contains("timeout") || message.contains("timed out") -> {
+                "Connection timed out. The server is taking too long to respond."
+            }
+            // Server Errors (500, 503, etc)
+            message.contains("500") || message.contains("internal server error") -> {
+                "Our servers are having trouble right now. Please try again later."
+            }
+            // Not Found / Bad Request (404, 400)
+            message.contains("404") || message.contains("400") -> {
+                "Service unavailable. Please contact support."
+            }
+            // Invalid Phone Number (Common validation error)
+            message.contains("invalid phone") || message.contains("phone number") -> {
+                "Please enter a valid M-Pesa phone number."
+            }
+            // Fallback for everything else
+            else -> "Something went wrong. Please try again."
         }
     }
 
@@ -95,8 +147,7 @@ class PaymentViewModel @Inject constructor(
         statusObserverJob = viewModelScope.launch {
             paymentRepository.observePaymentTransaction(bookingId).collect { transaction ->
                 if (handlePaymentStatus(transaction, bookingId, numberOfMonths)) {
-                    // Stop collecting if terminal state reached
-                    this.coroutineContext.cancel() // Cancel this job
+                    this.coroutineContext.cancel()
                 }
             }
         }
@@ -106,15 +157,22 @@ class PaymentViewModel @Inject constructor(
     private fun startPolling(bookingId: String, numberOfMonths: Int) {
         pollingJob?.cancel()
         pollingJob = viewModelScope.launch {
-            val timeout = System.currentTimeMillis() + 120000 // 2 minutes
-
+            val timeout = System.currentTimeMillis() + 120000
             while (isActive && !uiState.isPaymentComplete && !uiState.isPaymentFailed && System.currentTimeMillis() < timeout) {
                 delay(3000)
-                Log.d(TAG, "Polling check...")
                 val transaction = paymentRepository.getLatestPaymentTransaction(bookingId)
                 if (handlePaymentStatus(transaction, bookingId, numberOfMonths)) {
                     break
                 }
+            }
+            // If loop finishes without success
+            if (!uiState.isPaymentComplete && !uiState.isPaymentFailed) {
+                uiState = uiState.copy(
+                    isPaymentFailed = true,
+                    isLoading = false,
+                    isRequestSent = false,
+                    paymentMessage = "Payment timed out. If you paid, please wait a moment for confirmation."
+                )
             }
         }
     }
@@ -125,67 +183,36 @@ class PaymentViewModel @Inject constructor(
 
     private suspend fun handlePaymentStatus(transaction: PaymentTransaction?, bookingId: String, numberOfMonths: Int): Boolean {
         if (transaction == null) return false
-        
-        // --- KEY FIX FOR RETRY ---
-        // If the transaction ID is the same as the one we saw BEFORE starting this request,
-        // it means we are seeing stale data (e.g. the previous failure). Ignore it.
-        if (lastTransactionId != null && transaction.id == lastTransactionId) {
-            Log.d(TAG, "Skipping stale transaction: ${transaction.id}")
-            return false
-        }
-        
-        val status = transaction.status ?: return false
-        val normalizedStatus = status.lowercase().trim()
+        if (lastTransactionId != null && transaction.id == lastTransactionId) return false
 
-        return when (normalizedStatus) {
+        val status = transaction.status?.lowercase()?.trim() ?: return false
+
+        return when (status) {
             "completed", "success", "paid" -> {
-                Log.d(TAG, "Payment COMPLETED! Finalizing booking...")
-                
-                // CRITICAL FIX: Only NOW do we update the booking in the database
-                val updateResult = paymentRepository.updateBookingDuration(bookingId, numberOfMonths)
-                
-                if (updateResult.isSuccess) {
-                     uiState = uiState.copy(
-                        isPaymentComplete = true,
-                        isLoading = false,
-                        isRequestSent = false,
-                        isPaymentFailed = false,
-                        paymentMessage = "Payment Received! Room allocated."
-                    )
-                } else {
-                     uiState = uiState.copy(
-                        isPaymentComplete = true,
-                        isLoading = false,
-                        isRequestSent = false,
-                        isPaymentFailed = false,
-                        paymentMessage = "Payment Received! (Room update pending)"
-                    )
-                }
-                
+                paymentRepository.updateBookingDuration(bookingId, numberOfMonths)
+                uiState = uiState.copy(
+                    isPaymentComplete = true,
+                    isLoading = false,
+                    isRequestSent = false,
+                    isPaymentFailed = false,
+                    paymentMessage = "Payment Successful!"
+                )
                 stopPolling()
-                statusObserverJob?.cancel()
                 true
             }
             "failed", "cancelled" -> {
-                Log.d(TAG, "Payment FAILED.")
                 uiState = uiState.copy(
                     isPaymentFailed = true,
                     isLoading = false,
                     isRequestSent = false,
                     isPaymentComplete = false,
-                    paymentMessage = "Payment Failed or Cancelled."
+                    // Give a slightly more specific message for user cancellations
+                    paymentMessage = if (status == "cancelled") "You cancelled the payment." else "Payment failed. Please check your balance and try again."
                 )
                 stopPolling()
-                statusObserverJob?.cancel()
                 true
             }
-            else -> false // Still pending
+            else -> false
         }
-    }
-
-    fun resetState() {
-        uiState = PaymentUiState()
-        stopPolling()
-        statusObserverJob?.cancel()
     }
 }

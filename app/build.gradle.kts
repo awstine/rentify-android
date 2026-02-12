@@ -75,6 +75,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.play.services.auth)
     implementation(libs.androidx.ui)
+    implementation(libs.androidx.datastore.core)
     //implementation(libs.androidx.compose.animation.core.lint)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -91,6 +92,7 @@ dependencies {
     implementation(libs.supabase.gotrue)
     implementation(libs.supabase.functions)
     implementation(libs.supabase.realtime)
+    implementation(libs.supabase.storage)
     implementation("io.ktor:ktor-client-android:2.3.5")
 
     implementation("com.google.dagger:hilt-android:2.48")
@@ -98,4 +100,8 @@ dependencies {
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
     implementation("androidx.compose.ui:ui-text-google-fonts:1.2.0-alpha07")
+
+    //coil
+    implementation("io.coil-kt:coil-compose:2.6.0")
+
 }

@@ -3,7 +3,6 @@ package com.example.myapplication.screens.tenant
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -14,6 +13,8 @@ import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.ReportProblem
+import androidx.compose.material.icons.rounded.Apartment
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,39 +24,39 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myapplication.data.models.MachineSession
 import com.example.myapplication.data.models.WashingMachine
+import com.example.myapplication.screens.home.QuickActionItem
 import com.example.myapplication.ui.theme.LightGreen
 import com.example.myapplication.ui.theme.MediumAquamarine
-import java.text.SimpleDateFormat
-import java.util.Locale
+import com.example.myapplication.ui.theme.NavyPrimary
 
 @Composable
 fun TenantHomeScreen(
     viewModel: TenantHomeViewModel = hiltViewModel(),
     onNavigateToPayment: (String, Double, String) -> Unit = { _, _, _ -> },
-    onNavigateToPaymentHistory: () -> Unit = {}
+    onNavigateToPaymentHistory: () -> Unit = {},
+    onNavigateToBrowseRooms: () -> Unit = {} // Added callback for browsing
 ) {
     val state = viewModel.uiState
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { 
+        topBar = {
             HeaderSection(
                 userName = state.displayName,
-                roomNumber = state.roomNumber
-            ) 
+                roomNumber = if (state.activeBooking != null) state.roomNumber else "Guest"
+            )
         },
         bottomBar = { /* Add BottomNav here */ }
     ) { padding ->
         if (state.isLoading) {
-             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-             }
+            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = NavyPrimary)
+            }
         } else {
             LazyColumn(
                 modifier = Modifier
@@ -71,37 +72,30 @@ fun TenantHomeScreen(
                     }
                 }
 
-                // 2. Rent Status Card
+                // 1. MAIN STATUS CARD
                 item {
                     val activeBooking = state.activeBooking
                     if (activeBooking != null) {
+                        // User HAS a room -> Show Rent Status
                         RentStatusCard(
                             amountDue = activeBooking.monthly_rent,
-                            dueDate = activeBooking.end_date, // Using end_date as proxy for due date or you can calculate next due date
+                            dueDate = activeBooking.end_date,
                             isPaid = activeBooking.payment_status == "paid",
                             onPayClick = {
                                 onNavigateToPayment(activeBooking.id, activeBooking.monthly_rent, state.roomNumber)
                             }
                         )
                     } else {
-                         // No active booking card
-                         Card(
-                            shape = RoundedCornerShape(20.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                        ) {
-                            Box(modifier = Modifier.padding(24.dp)) {
-                                Text("No active booking found.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
+                        // User has NO room -> Show "Find a Room" Call to Action
+                        NoActiveBookingCard(onBrowseClick = onNavigateToBrowseRooms)
                     }
                 }
 
-                // 3. Washing Machine Tracker
+                // 2. Washing Machine Tracker (Only show if they have a room, or show generic info)
                 if (state.machines.isNotEmpty()) {
                     item {
                         Text(
-                            text = "Washing Machines",
+                            text = "Laundry Status",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
@@ -114,18 +108,9 @@ fun TenantHomeScreen(
                             userSession = session
                         )
                     }
-                } else if (state.activeBooking != null) {
-                     item {
-                        Text(
-                            text = "Washing machine coming soon.",
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            fontWeight = FontWeight.Light,
-                            fontSize = 15.sp
-                        )
-                    }
                 }
 
-                // 4. Quick Actions
+                // 3. Quick Actions
                 item {
                     Text(
                         text = "Quick Actions",
@@ -139,66 +124,141 @@ fun TenantHomeScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceAround
+                        horizontalArrangement = Arrangement
+                            .spacedBy(12.dp) // Space between items
                     ) {
+                        // We use weights so they share the width equally
                         QuickActionItem(
-                            icon = Icons.Outlined.History, 
-                            label = "Pay History",
+                            icon = Icons.Outlined.History,
+                            label = "History",
+                            modifier = Modifier.weight(1f),
                             onClick = onNavigateToPaymentHistory
                         )
-                        QuickActionItem(Icons.Outlined.ReportProblem, "Report Issue")
-                        QuickActionItem(Icons.Outlined.Forum, "Contact Us")
-                        QuickActionItem(Icons.Outlined.Campaign, "Notices")
+                        QuickActionItem(
+                            icon = Icons.Outlined.ReportProblem,
+                            label = "Support",
+                            modifier = Modifier.weight(1f),
+                            onClick = {}
+                        )
+                        QuickActionItem(
+                            icon = Icons.Outlined.Forum,
+                            label = "Contact",
+                            modifier = Modifier.weight(1f),
+                            onClick = {}
+                        )
+                        QuickActionItem(
+                            icon = Icons.Outlined.Campaign,
+                            label = "Notices",
+                            modifier = Modifier.weight(1f),
+                            onClick = {}
+                        )
                     }
                 }
-                
+
                 item { Spacer(modifier = Modifier.height(20.dp)) }
             }
         }
     }
 }
 
+// --- NEW CUSTOM CARD: "No Room" State ---
 @Composable
-fun HeaderSection(userName: String, roomNumber: String) {
+fun NoActiveBookingCard(onBrowseClick: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                // Gradient Background: Navy to a lighter Teal
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            NavyPrimary,
+                            Color(0xFF26A69A) // Teal-ish color
+                        )
+                    )
+                )
+        ) {
+            // Background Decoration (Faint big icon)
+            Icon(
+                imageVector = Icons.Rounded.Apartment,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.1f),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .size(160.dp)
+                    .offset(x = 40.dp, y = 20.dp)
+            )
+
+            // Content
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    text = "Welcome Home!",
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "You don't have an active booking yet.\nFind your perfect space today.",
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+            }
+        }
+    }
+}
+
+// --- EXISTING COMPONENTS (Unchanged) ---
+
+@Composable
+fun HeaderSection(
+    userName: String,
+    roomNumber: String?
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 24.dp, vertical = 20.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .padding(8.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column {
-                Text(
-                    text = "Hello,",
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Light,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    text = "$userName",
-                    fontSize = 38.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
+        // Stacked Hello / Name
+        Column {
+            Text(
+                text = "Hello,",
+                fontSize = 23.sp,
+                fontWeight = FontWeight.Thin,
+                color = NavyPrimary
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = userName,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+        }
 
-//            Text(
-//                text = roomNumber,
-//                fontSize = 14.sp,
-//                color = Color.Gray
-//            )
-
-            // Notification Icon with Badge
-            Box (
-            ){
+            Box {
                 Icon(
                     imageVector = Icons.Default.Notifications,
                     contentDescription = "Alerts",
@@ -212,7 +272,6 @@ fun HeaderSection(userName: String, roomNumber: String) {
                         .background(MaterialTheme.colorScheme.error)
                         .align(Alignment.TopEnd)
                 )
-            }
         }
     }
 }
@@ -225,104 +284,54 @@ fun RentStatusCard(
     onPayClick: () -> Unit
 ) {
     val cardBrush = if (isPaid) {
-        Brush.verticalGradient(
-            colors = listOf(LightGreen, MediumAquamarine)
-        )
+        Brush.verticalGradient(colors = listOf(LightGreen, MediumAquamarine))
     } else {
-        Brush.verticalGradient(
-            colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary) 
-        )
+        Brush.verticalGradient(colors = listOf(NavyPrimary, Color(0xFF5C5CFF))) // Using Navy
     }
     val contentColor = MaterialTheme.colorScheme.onPrimary
 
     Card(
         shape = RoundedCornerShape(24.dp),
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .background(cardBrush)
-                .padding(24.dp)
-        ) {
-            // Faint background icon
+        Box(modifier = Modifier.background(cardBrush).padding(24.dp)) {
             Icon(
                 imageVector = Icons.Default.AccountBalanceWallet,
                 contentDescription = null,
                 tint = contentColor.copy(alpha = 0.1f),
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(80.dp)
-                    .offset(x = 10.dp, y = 10.dp)
+                modifier = Modifier.align(Alignment.BottomEnd).size(80.dp).offset(x = 10.dp, y = 10.dp)
             )
 
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = "Monthly Rent",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = contentColor.copy(alpha = 0.9f)
-                    )
-
-                    if (isPaid) {
-                        Surface(
-                            color = contentColor.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = "PAID",
-                                color = contentColor,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                            )
-                        }
-                    } else {
-                         Surface(
-                            color = MaterialTheme.colorScheme.error,
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = "DUE",
-                                color = MaterialTheme.colorScheme.onError,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                            )
-                        }
+                    Text("Monthly Rent", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = contentColor.copy(alpha = 0.9f))
+                    Surface(
+                        color = if(isPaid) contentColor.copy(alpha=0.2f) else MaterialTheme.colorScheme.error,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = if (isPaid) "PAID" else "DUE",
+                            color = if(isPaid) contentColor else Color.White,
+                            fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = if (isPaid) "All clear!" else "KES ${amountDue.toInt()}",
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = contentColor
-                )
-
-                Text(
-                    text = if (isPaid) "Thank you!" else "Due by $dueDate",
-                    fontSize = 14.sp,
-                    color = contentColor.copy(alpha = 0.8f)
-                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(if (isPaid) "All clear!" else "KES ${amountDue.toInt()}", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = contentColor)
+                Text(if (isPaid) "Thank you!" else "Due by $dueDate", fontSize = 14.sp, color = contentColor.copy(alpha = 0.8f))
 
                 if (!isPaid) {
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
                     Button(
                         onClick = onPayClick,
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = contentColor,
-                            contentColor = MaterialTheme.colorScheme.primary
-                        )
+                        modifier = Modifier.fillMaxWidth().height(45.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = NavyPrimary)
                     ) {
                         Text("Pay Now", fontWeight = FontWeight.Bold)
                     }
@@ -336,58 +345,28 @@ fun RentStatusCard(
 fun WashingMachineCard(machine: WashingMachine, userSession: MachineSession?) {
     val isOccupied = machine.status == "in_use"
     val isMine = userSession != null
-    
     val statusColor = if (isOccupied) MaterialTheme.colorScheme.error else LightGreen
-    val statusText = if (isOccupied) {
-        if (isMine) "In Use (You)" else "Occupied"
-    } else "Available"
 
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier.padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Icon Circle
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.background),
+                modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.background),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.LocalLaundryService,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                Icon(Icons.Default.LocalLaundryService, null, tint = MaterialTheme.colorScheme.primary)
             }
-
             Spacer(modifier = Modifier.width(16.dp))
-
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "Machine ${machine.machine_number}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Machine ${machine.machine_number}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(statusColor))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = statusText, color = statusColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text(if (isOccupied) (if (isMine) "In Use (You)" else "Occupied") else "Available", color = statusColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
-                if (isMine && userSession?.end_time != null) {
-                     Text(text = "Ends at: ${userSession.end_time}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                }
-            }
-
-            Button(
-                onClick = { /* Start Session */ },
-                enabled = !isOccupied,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                modifier = Modifier.height(36.dp)
-            ) {
-                Text(if (isOccupied) "In Use" else "Use", fontSize = 12.sp)
             }
         }
     }
@@ -395,22 +374,50 @@ fun WashingMachineCard(machine: WashingMachine, userSession: MachineSession?) {
 
 @Composable
 fun QuickActionItem(
-    icon: ImageVector, 
+    icon: ImageVector,
     label: String,
-    onClick: () -> Unit = {}
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(60.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable { onClick() },
-            contentAlignment = Alignment.Center
+    // Making these look like small elevated cards (Appealing style)
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = modifier
+            .height(90.dp) // Fixed height for uniformity
+            .clickable { onClick() }
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Icon(imageVector = icon, contentDescription = label, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Icon with a light colored circle background
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(NavyPrimary.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = NavyPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.DarkGray,
+                maxLines = 1
+            )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(text = label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
     }
 }
