@@ -49,8 +49,8 @@ data class PaymentTransaction(
     val status: String? = null,
     @SerialName("booking_id") val bookingId: String? = null,
     val mpesa_receipt_number: String? = null,
-    val created_at: String? = null // Necessary for sorting and display
-    // val amount: Double? = null // Optional: You can add this column to your DB if you want to show amount here
+    val created_at: String? = null, // Necessary for sorting and display
+    val amount: Double? = null // Optional: You can add this column to your DB if you want to show amount here
 )
 
 // --- REPOSITORY CLASS ---

@@ -133,7 +133,6 @@ class AuthRepository {
     suspend fun getUserProfile(): Result<User> {
         return withContext(Dispatchers.IO) {
             try {
-                // ** THE FIX IS HERE **
                 // Ensure the session is loaded from storage before trying to access it.
                 SupabaseClient.client.auth.loadFromStorage()
 
@@ -150,7 +149,7 @@ class AuthRepository {
                         .decodeSingle<User>()
                     return@withContext Result.success(profile)
                 } catch (e: Exception) {
-                    Log.w("AuthRepo", "Profile fetch failed. This usually means the row is missing. Attempting self-repair...", e)
+                    Log.w("AuthRepo", "Profile fetch failed.", e)
                 }
 
                 // 2. Construct Fallback User from Metadata

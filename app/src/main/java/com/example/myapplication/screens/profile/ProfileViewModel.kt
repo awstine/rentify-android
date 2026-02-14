@@ -8,6 +8,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -18,6 +20,9 @@ class ProfileViewModel @Inject constructor(
 
     var uiState by mutableStateOf(ProfileState())
         private set
+
+    private val _profilePhotoUpdateSuccess = MutableSharedFlow<Unit>()
+    val profilePhotoUpdateSuccess = _profilePhotoUpdateSuccess.asSharedFlow()
 
     fun loadUserProfile() {
         viewModelScope.launch {
@@ -37,6 +42,7 @@ class ProfileViewModel @Inject constructor(
             uiState = result.fold(
                 onSuccess = { imageUrl ->
                     val updatedUser = uiState.user?.copy(profile_image_url = imageUrl)
+                    _profilePhotoUpdateSuccess.emit(Unit)
                     uiState.copy(isLoading = false, user = updatedUser)
                 },
                 onFailure = { error -> uiState.copy(isLoading = false, error = error.message) }

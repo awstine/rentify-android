@@ -2,7 +2,7 @@ package com.example.myapplication.data.models
 
 import kotlinx.serialization.Serializable
 
-// Booking.kt
+
 @Serializable
 data class Booking(
     val id: String,

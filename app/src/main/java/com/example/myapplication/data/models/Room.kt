@@ -2,7 +2,7 @@ package com.example.myapplication.data.models
 
 import kotlinx.serialization.Serializable
 
-// Room.kt
+
 @Serializable
 data class Room(
     val id: String,

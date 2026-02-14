@@ -51,15 +51,19 @@ class LoginViewModel @Inject constructor(
             is LoginUiEvent.UsernameChanged -> {
                 uiState = uiState.copy(username = event.value, usernameError = null)
             }
+
             is LoginUiEvent.PasswordChanged -> {
                 uiState = uiState.copy(password = event.value, passwordError = null)
             }
+
             is LoginUiEvent.RememberMeChanged -> {
                 uiState = uiState.copy(rememberMe = event.value)
             }
+
             is LoginUiEvent.TogglePasswordVisibility -> {
                 uiState = uiState.copy(isPasswordVisible = !uiState.isPasswordVisible)
             }
+
             is LoginUiEvent.Submit -> {
                 viewModelScope.launch {
                     handleLogin()

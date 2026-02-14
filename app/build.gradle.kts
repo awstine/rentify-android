@@ -76,7 +76,7 @@ dependencies {
     implementation(libs.play.services.auth)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.datastore.core)
-    //implementation(libs.androidx.compose.animation.core.lint)
+    implementation("androidx.core:core-splashscreen:1.2.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

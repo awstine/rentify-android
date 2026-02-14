@@ -1,5 +1,8 @@
 package com.example.myapplication.screens.profile
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
@@ -22,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
@@ -35,11 +39,11 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.rememberAsyncImagePainter
 import com.example.myapplication.R
 
 
@@ -50,29 +54,33 @@ fun ProfileScreen(
 ) {
     val state = viewModel.uiState
     var expandedCard by remember { mutableStateOf<String?>(null) }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Colors matching the "Clean Blue/White" aesthetic
-    val backgroundColor = Color(0xFFF3F5F9)
-    val primaryTextColor = Color(0xFF1E232C)
-    val secondaryTextColor = Color(0xFF8391A1)
-    val cardColor = Color.White
-
-    // Replace with your NavyPrimary if available
-    val iconTint = Color(0xFF1E232C)
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+    ) { uri ->
+        uri?.let {
+            selectedImageUri = it
+            viewModel.updateProfilePhoto(it)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadUserProfile()
     }
 
+    LaunchedEffect(viewModel.profilePhotoUpdateSuccess) {
+        viewModel.profilePhotoUpdateSuccess.collect {
+            selectedImageUri = null
+        }
+    }
+
     Scaffold(
-        //containerColor = backgroundColor,
         topBar = {
-            // Custom simplified header to match the image (No back button)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 16.dp, bottom = 8.dp)
-                    .padding(horizontal = 24.dp),
+                    .padding(top =30.dp, bottom = 8.dp, start = 24.dp, end = 24.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Text(
@@ -86,7 +94,7 @@ fun ProfileScreen(
     ) { paddingValues ->
         if (state.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = iconTint)
+                CircularProgressIndicator()
             }
         } else if (state.error != null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -103,44 +111,57 @@ fun ProfileScreen(
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 1. TOP CARD: User Info
                 Column(
                     modifier = Modifier
                         .padding(vertical = 32.dp)
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_background),
-                        contentDescription = "Profile Picture",
-                        modifier = Modifier
-                            .size(100.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        Image(
+                            painter = rememberAsyncImagePainter(
+                                model = selectedImageUri ?: user?.profile_image_url
+                                ?: R.drawable.ic_launcher_background
+                            ),
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier
+                                .size(100.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Change Profile Photo",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                                .clickable { imagePickerLauncher.launch("image/*") }
+                                .padding(6.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(3.dp))
 
                     Text(
                         text = user?.full_name ?: "Guest User",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        color = primaryTextColor
+                        fontSize = 20.sp
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
                         text = user?.email ?: "No email",
-                        color = secondaryTextColor,
                         fontSize = 14.sp
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // Badge for Role
                     Surface(
-                        color = Color(0xFFE0F7FA), // Light cyan for badge
+                        color = Color(0xFFE0F7FA),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
@@ -153,17 +174,16 @@ fun ProfileScreen(
                     }
                 }
 
-                //Spacer(modifier = Modifier.height(4.dp))
-
-                // 2. BOTTOM CARD: Menu Options List
-                // We wrap all items in ONE card to look like the screenshot
                 Card(
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = cardColor),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(vertical = 12.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .padding(vertical = 12.dp)
+                    ) {
                         ProfileListRow(
                             icon = Icons.Default.Badge,
                             title = "ID Number",
@@ -194,7 +214,6 @@ fun ProfileScreen(
 
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
 
-                        // Sign Out (Styled slightly differently as an action)
                         ProfileListRow(
                             icon = Icons.Default.ExitToApp,
                             title = "Sign Out",
@@ -234,7 +253,6 @@ fun ProfileListRow(
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon with circle background
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -260,7 +278,6 @@ fun ProfileListRow(
                 modifier = Modifier.weight(1f)
             )
 
-            // Arrow (Rotates if expandable, invisible if no subtitle/action)
             if (subtitle != null) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -271,7 +288,6 @@ fun ProfileListRow(
             }
         }
 
-        // Expanded Content (The subtitle/value)
         AnimatedVisibility(visible = isExpanded && subtitle != null) {
             Column {
                 Spacer(modifier = Modifier.height(12.dp))
@@ -279,7 +295,7 @@ fun ProfileListRow(
                     text = subtitle ?: "",
                     fontSize = 14.sp,
                     color = Color.Gray,
-                    modifier = Modifier.padding(start = 56.dp) // Align with text above
+                    modifier = Modifier.padding(start = 56.dp)
                 )
             }
         }
