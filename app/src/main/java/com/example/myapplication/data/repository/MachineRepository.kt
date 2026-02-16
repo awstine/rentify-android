@@ -6,8 +6,11 @@ import com.example.myapplication.di.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class MachineRepository {
+@Singleton
+class MachineRepository @Inject constructor() {
 
     suspend fun getMachinesForTenant(): Result<List<WashingMachine>> {
         return withContext(Dispatchers.IO) {

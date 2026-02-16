@@ -2,14 +2,16 @@ package com.example.myapplication.data.repository
 
 import android.util.Log
 import com.example.myapplication.data.models.Booking
+import com.example.myapplication.data.models.RecentPayment
 import com.example.myapplication.di.SupabaseClient
 import io.github.jan.supabase.functions.functions
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.channel
-import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.decodeRecord
+import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +60,22 @@ data class PaymentTransaction(
 class PaymentRepository {
 
     private val TAG = "PaymentRepo"
+
+    suspend fun getRecentPayments(landlordId: String): Result<List<RecentPayment>> {
+        return try {
+            val response = SupabaseClient.client.postgrest.from("payments").select {
+                filter {
+                    eq("landlord_id", landlordId)
+                    eq("status", "completed")
+                }
+                order("created_at", Order.DESCENDING)
+                limit(5)
+            }.decodeList<RecentPayment>()
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     // 1. Send STK Push
     suspend fun initiateMpesaPayment(

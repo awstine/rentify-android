@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myapplication.data.models.Booking
+import com.example.myapplication.data.models.RecentPayment
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -133,7 +134,7 @@ fun AdminHomeScreen(
                     }
                 }
 
-                // 4. Recent Bookings List
+                // 4. Recent Payments List
                 item {
                     Text(
                         text = "Recent Activity",
@@ -143,17 +144,17 @@ fun AdminHomeScreen(
                     )
                 }
 
-                if (state.recentBookings.isEmpty()) {
+                if (state.recentPayments.isEmpty()) {
                      item {
                         Text(
-                            text = "No recent bookings found.",
+                            text = "No recent payments found.",
                             color = Color.Gray,
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
                 } else {
-                    items(state.recentBookings) { booking ->
-                        BookingItem(booking)
+                    items(state.recentPayments) { payment ->
+                        RecentPaymentItem(payment)
                     }
                 }
             }
@@ -254,7 +255,7 @@ fun QuickActionButton(
 }
 
 @Composable
-fun BookingItem(booking: Booking) {
+fun RecentPaymentItem(payment: RecentPayment) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
@@ -269,26 +270,11 @@ fun BookingItem(booking: Booking) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text(text = "New Booking", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(text = "KES ${booking.monthly_rent}", fontSize = 12.sp, color = Color.Gray)
+                Text(text = payment.roomName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(text = payment.occupantName, fontSize = 12.sp, color = Color.Gray)
             }
             
-            // Status Chip
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (booking.status == "active") Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
-                    )
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = booking.status.uppercase(),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (booking.status == "active") Color(0xFF2E7D32) else Color(0xFFEF6C00)
-                )
-            }
+            Text(text = "KES ${payment.amount}", fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

@@ -6,8 +6,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.models.Booking
+import com.example.myapplication.data.models.RecentPayment
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.BookingRepository
+import com.example.myapplication.data.repository.PaymentRepository
 import com.example.myapplication.data.repository.PropertyRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -20,7 +22,7 @@ data class AdminDashboardState(
     val activeTenants: Int = 0,
     val pendingRequests: Int = 0,
     val estimatedRevenue: Double = 0.0,
-    val recentBookings: List<Booking> = emptyList(),
+    val recentPayments: List<RecentPayment> = emptyList(),
     val error: String? = null
 )
 
@@ -28,7 +30,8 @@ data class AdminDashboardState(
 class AdminHomeViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val propertyRepository: PropertyRepository,
-    private val bookingRepository: BookingRepository
+    private val bookingRepository: BookingRepository,
+    private val paymentRepository: PaymentRepository
 ) : ViewModel() {
 
     var uiState by mutableStateOf(AdminDashboardState())
@@ -66,9 +69,9 @@ class AdminHomeViewModel @Inject constructor(
                     .filter { it.status == "active" && it.payment_status == "paid" }
                     .sumOf { it.monthly_rent }
 
-                // Recent activity: Top 5 most recent bookings
-                // Sorting by created_at string might not be perfect without parsing, but ISO 8601 sorts alphabetically correctly
-                val recent = bookings.sortedByDescending { it.created_at }.take(5)
+                // 3. Fetch Recent Payments
+                val recentPaymentsResult = paymentRepository.getRecentPayments(user.id)
+                val recentPayments = recentPaymentsResult.getOrNull() ?: emptyList()
 
                 uiState = uiState.copy(
                     isLoading = false,
@@ -77,7 +80,7 @@ class AdminHomeViewModel @Inject constructor(
                     activeTenants = activeTenants,
                     pendingRequests = pendingRequests,
                     estimatedRevenue = estimatedRevenue,
-                    recentBookings = recent
+                    recentPayments = recentPayments
                 )
 
             } catch (e: Exception) {
