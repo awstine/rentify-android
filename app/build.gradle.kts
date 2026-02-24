@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt.android)
-    id("kotlin-kapt")
+    alias(libs.plugins.ksp)
 }
 
 val localProperties = Properties().apply {
@@ -56,7 +56,7 @@ android {
         buildConfig = true // Enable BuildConfig generation
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
 }
 
@@ -95,13 +95,18 @@ dependencies {
     implementation(libs.supabase.storage)
     implementation("io.ktor:ktor-client-android:2.3.5")
 
-    implementation("com.google.dagger:hilt-android:2.48")
-    kapt("com.google.dagger:hilt-compiler:2.48")
-    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.kotlinx.serialization)
     implementation("androidx.compose.ui:ui-text-google-fonts:1.2.0-alpha07")
 
-    //coil
+    //Coil
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    //Room
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room.ktx)
 
 }
