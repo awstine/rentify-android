@@ -1,15 +1,20 @@
 package com.example.myapplication.data.repository
 
 import android.util.Log
+import com.example.myapplication.data.local.CachedRoomEntity
+import com.example.myapplication.data.local.RoomDao
 import com.example.myapplication.data.models.Property
 import com.example.myapplication.data.models.Room
 import com.example.myapplication.di.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 
-class PropertyRepository {
+class PropertyRepository @Inject constructor(
+    private val roomDao: RoomDao
+) {
     suspend fun getPropertiesForLandlord(landlordId: String): Result<List<Property>> {
         return withContext(Dispatchers.IO) {
             try {
@@ -59,18 +64,54 @@ class PropertyRepository {
     suspend fun getAllAvailableRooms(): Result<List<Room>> {
         return withContext(Dispatchers.IO) {
             try {
+                // 🌍 Try network first
                 val rooms = SupabaseClient.client.postgrest["rooms"]
                     .select {
-                        filter {
-                            eq("is_available", true)
-                        }
+                        filter { eq("is_available", true) }
                     }
                     .decodeList<Room>()
-                Log.d("PropertyRepository", "Fetched ${rooms.size} available rooms")
+
+                // 💾 Save to local cache
+                val cached = rooms.mapNotNull { room ->
+                    room.property_id?.let {
+                        CachedRoomEntity(
+                            id = room.id,
+                            propertyId = it,
+                            roomNumber = room.room_number,
+                            floor = room.floor,
+                            monthlyRent = room.monthly_rent,
+                            isAvailable = room.is_available
+                        )
+                    }
+                }
+
+                roomDao.clearRooms()
+                roomDao.insertRooms(cached)
+
                 Result.success(rooms)
+
             } catch (e: Exception) {
-                Log.e("PropertyRepository", "Error fetching rooms", e)
-                Result.failure(e)
+
+                // 📵 If network fails → load from cache
+                try {
+                    val cachedRooms = roomDao.getAllRooms()
+
+                    val rooms = cachedRooms.map {
+                        Room(
+                            id = it.id,
+                            property_id = it.propertyId,
+                            room_number = it.roomNumber,
+                            floor = it.floor,
+                            monthly_rent = it.monthlyRent,
+                            is_available = it.isAvailable
+                        )
+                    }
+
+                    Result.success(rooms)
+
+                } catch (cacheError: Exception) {
+                    Result.failure(e)
+                }
             }
         }
     }
@@ -78,12 +119,52 @@ class PropertyRepository {
     suspend fun getAllRooms(): Result<List<Room>> {
         return withContext(Dispatchers.IO) {
             try {
+                // 🌍 Try network first
                 val rooms = SupabaseClient.client.postgrest["rooms"]
                     .select()
                     .decodeList<Room>()
+
+                // 💾 Save to local cache
+                val cached = rooms.mapNotNull { room ->
+                    room.property_id?.let {
+                        CachedRoomEntity(
+                            id = room.id,
+                            propertyId = it,
+                            roomNumber = room.room_number,
+                            floor = room.floor,
+                            monthlyRent = room.monthly_rent,
+                            isAvailable = room.is_available
+                        )
+                    }
+                }
+
+                roomDao.clearRooms()
+                roomDao.insertRooms(cached)
+
                 Result.success(rooms)
+
             } catch (e: Exception) {
-                Result.failure(e)
+
+                // 📵 If network fails → load from cache
+                try {
+                    val cachedRooms = roomDao.getAllRooms()
+
+                    val rooms = cachedRooms.map {
+                        Room(
+                            id = it.id,
+                            property_id = it.propertyId,
+                            room_number = it.roomNumber,
+                            floor = it.floor,
+                            monthly_rent = it.monthlyRent,
+                            is_available = it.isAvailable
+                        )
+                    }
+
+                    Result.success(rooms)
+
+                } catch (cacheError: Exception) {
+                    Result.failure(e)
+                }
             }
         }
     }

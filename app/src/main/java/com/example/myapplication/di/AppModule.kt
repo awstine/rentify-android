@@ -1,5 +1,6 @@
 package com.example.myapplication.di
 
+import com.example.myapplication.data.local.RoomDao
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.BookingRepository
 import com.example.myapplication.data.repository.PaymentRepository
@@ -28,8 +29,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun providePropertyRepository(): PropertyRepository {
-        return PropertyRepository()
+    fun providePropertyRepository(roomDao: RoomDao): PropertyRepository {
+        return PropertyRepository(roomDao)
     }
 
     @Provides
