@@ -35,9 +35,10 @@ class HistoryViewModel @Inject constructor(
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, error = null)
 
-            val user = authRepository.getCurrentUser()
-            if (user != null) {
-                val result = paymentRepository.getTenantPaymentHistory(user.id)
+            val profileResult = authRepository.getUserProfile()
+            val profile = profileResult.getOrNull()
+            if (profile != null) {
+                val result = paymentRepository.getTenantPaymentHistory(profile.id)
                 if (result.isSuccess) {
                     uiState = uiState.copy(
                         isLoading = false,

@@ -43,9 +43,10 @@ class HomeViewModel @Inject constructor(
     private fun loadUserProfile() {
          viewModelScope.launch {
             try {
-                val user = authRepository.getCurrentUser()
-                val emailName = user?.email?.substringBefore("@")
-                
+                val profileResult = authRepository.getUserProfile()
+                val profile = profileResult.getOrNull()
+                val emailName = profile?.email?.substringBefore("@")
+
                 val formattedName = if (!emailName.isNullOrBlank()) {
                     emailName.replaceFirstChar { 
                         if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() 
@@ -53,7 +54,7 @@ class HomeViewModel @Inject constructor(
                 } else {
                     "Tenant"
                 }
-                
+
                 uiState = uiState.copy(username = formattedName)
             } catch (e: Exception) {
                 // Ignore error, just keep default or current
@@ -64,7 +65,7 @@ class HomeViewModel @Inject constructor(
     fun loadProperties() {
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, error = null)
-            
+
             // 1. Get all available rooms to know which properties to show and their prices
             val roomsResult = propertyRepository.getAllAvailableRooms()
             if (roomsResult.isFailure) {
@@ -72,7 +73,7 @@ class HomeViewModel @Inject constructor(
                 return@launch
             }
             val rooms = roomsResult.getOrDefault(emptyList())
-            
+
             if (rooms.isEmpty()) {
                 uiState = uiState.copy(isLoading = false, properties = emptyList())
                 return@launch
@@ -80,7 +81,7 @@ class HomeViewModel @Inject constructor(
 
             // 2. Extract unique property IDs
             val propertyIds = rooms.mapNotNull { it.property_id }.distinct()
-            
+
             // 3. Fetch properties details
             val propertiesResult = propertyRepository.getPropertiesByIds(propertyIds)
             if (propertiesResult.isFailure) {
@@ -93,7 +94,7 @@ class HomeViewModel @Inject constructor(
             val uiProperties = properties.map { property ->
                 val propertyRooms = rooms.filter { it.property_id == property.id }
                 val minPrice = propertyRooms.minOfOrNull { it.monthly_rent } ?: 0.0
-                
+
                 PropertyUiModel(
                     id = property.id.hashCode(), // Int ID expected by UI model, though ideally should be changed to String or match DB
                     imageUrl = "", // Placeholder

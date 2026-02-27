@@ -126,10 +126,6 @@ class AuthRepository {
         }
     }
 
-    suspend fun getCurrentUser(): User? {
-        return getUserProfile().getOrNull()
-    }
-
     suspend fun getUserProfile(): Result<User> {
         return withContext(Dispatchers.IO) {
             try {

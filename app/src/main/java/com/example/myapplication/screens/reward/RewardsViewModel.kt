@@ -41,24 +41,25 @@ class RewardsViewModel @Inject constructor(
     fun loadRewards() {
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, error = null)
-            val user = authRepository.getCurrentUser()
-            if (user != null) {
-                val bookingsResult = bookingRepository.getBookingsForTenant(user.id)
+            val profileResult = authRepository.getUserProfile()
+            val profile = profileResult.getOrNull()
+            if (profile != null) {
+                val bookingsResult = bookingRepository.getBookingsForTenant(profile.id)
                 val bookings = bookingsResult.getOrNull() ?: emptyList()
-                
+
                 // Simple logic: Count paid bookings as streak
                 // In a real app, you would check if they are consecutive and on time.
                 val paidBookingsCount = bookings.count { it.payment_status == "paid" }
-                
+
                 val rewardsList = listOf(
                     Reward("5% Rent Discount", "Pay rent on time for 6 consecutive months", 6, Icons.Default.Star),
                     Reward("Referral", "Refer a friend who moves in", 1, Icons.Default.RoomPreferences),
                     Reward("Car Wash", "Report a maintenance issue", 1, Icons.Default.LocalCarWash),
                     Reward("Gift Card", "Renew your lease early", 3, Icons.Default.CardGiftcard)
                 )
-                
+
                 uiState = uiState.copy(
-                    isLoading = false, 
+                    isLoading = false,
                     streak = paidBookingsCount,
                     rewards = rewardsList
                 )

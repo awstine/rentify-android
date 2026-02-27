@@ -10,5 +10,6 @@ data class Room(
     val room_number: String,
     val floor: Int?,
     val monthly_rent: Double,
-    val is_available: Boolean = true
+    val is_available: Boolean = true,
+    val type: String? = null
 )

@@ -21,11 +21,25 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "app_database"
-        ).build()
+        ).fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides
+    @Singleton
     fun provideRoomDao(database: AppDatabase): RoomDao {
         return database.roomDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideTenantDashboardDao(database: AppDatabase): TenantDashboardDao {
+        return database.tenantDashboardDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideAdminDashboardDao(database: AppDatabase): AdminDashboardDao {
+        return database.adminDashboardDao()
     }
 }

@@ -53,15 +53,17 @@ val InputLightGrey = Color(0xFFF3F4F6)
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
+    onLoginSuccess: (String) -> Unit,
     onForgotPassword: () -> Unit,
     onNavigateToRegister: () -> Unit,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val uiState = viewModel.uiState
 
-    LaunchedEffect(uiState.loginSuccess) {
-        if (uiState.loginSuccess) onLoginSuccess()
+    LaunchedEffect(uiState.loginSuccess, uiState.userRole) {
+        if (uiState.loginSuccess && uiState.userRole != null) {
+            onLoginSuccess(uiState.userRole)
+        }
     }
 
     Column(

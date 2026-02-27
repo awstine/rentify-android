@@ -13,5 +13,5 @@ data class Booking(
     val monthly_rent: Double,
     val status: String = "pending", // pending, active, expired
     val payment_status: String = "unpaid", // unpaid, paid, partial
-    val created_at: String?
+    val created_at: String? = null
 )

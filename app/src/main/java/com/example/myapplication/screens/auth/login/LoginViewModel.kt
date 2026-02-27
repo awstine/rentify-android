@@ -23,7 +23,8 @@ data class LoginUiState(
 
     // State to manage the login process
     val isLoading: Boolean = false,
-    val loginSuccess: Boolean = false
+    val loginSuccess: Boolean = false,
+    val userRole: String? = null
 )
 
 // 2. UI Events: Defines all the actions a user can perform.
@@ -41,11 +42,9 @@ class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
-    // A mutable state that holds the current UI state.
     var uiState by mutableStateOf(LoginUiState())
         private set
 
-    // Event Handler: Processes UI events to update the state.
     fun onEvent(event: LoginUiEvent) {
         when (event) {
             is LoginUiEvent.UsernameChanged -> {
@@ -72,12 +71,9 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    // Business Logic: Contains the actual logic for logging in.
     private suspend fun handleLogin() {
-        // Reset previous errors and start loading
         uiState = uiState.copy(isLoading = true, usernameError = null, passwordError = null)
 
-        // --- Basic Validation ---
         if (uiState.username.isBlank()) {
             uiState = uiState.copy(isLoading = false, usernameError = "Username cannot be empty")
             return
@@ -94,9 +90,17 @@ class LoginViewModel @Inject constructor(
 
         result.fold(
             onSuccess = {
-                uiState = uiState.copy(isLoading = false, loginSuccess = true)
+                val profileResult = authRepository.getUserProfile()
+                profileResult.fold(
+                    onSuccess = { user ->
+                        uiState = uiState.copy(isLoading = false, loginSuccess = true, userRole = user.role)
+                    },
+                    onFailure = {
+                        uiState = uiState.copy(isLoading = false, passwordError = "Could not fetch user profile")
+                    }
+                )
             },
-            onFailure = { 
+            onFailure = {
                 uiState = uiState.copy(isLoading = false, passwordError = "Invalid login credentials")
             }
         )
@@ -104,5 +108,15 @@ class LoginViewModel @Inject constructor(
 
     suspend fun hasValidSession(): Boolean {
         return authRepository.hasValidSession()
+    }
+
+    suspend fun getUserRole(): String? {
+        return authRepository.getUserProfile().getOrNull()?.role
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            authRepository.signOut()
+        }
     }
 }

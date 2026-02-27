@@ -9,12 +9,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -31,7 +33,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,6 +46,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.myapplication.navigation.BottomNavItem
 import com.example.myapplication.screens.admin.AdminHomeScreen
+import com.example.myapplication.screens.auth.login.LoginScreen
 import com.example.myapplication.screens.payment.PaymentScreen
 import com.example.myapplication.screens.profile.ProfileScreen
 import com.example.myapplication.screens.reward.RewardsScreen
@@ -60,69 +62,84 @@ fun MainAppScreen(
     val navController = rememberNavController()
     val userRole = viewModel.userRole
 
-    val navItems = remember(userRole) {
-        if (userRole == "admin") {
-            listOf(BottomNavItem.Home, BottomNavItem.Explore, BottomNavItem.Profile)
-        } else {
-            listOf(BottomNavItem.Home, BottomNavItem.Explore, BottomNavItem.Rewards, BottomNavItem.Profile)
+    if (viewModel.isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
         }
-    }
+    } else if (userRole == null) {
+        LoginScreen(
+            onLoginSuccess = { role ->
+                viewModel.onLoginSuccess(role)
+            },
+            onForgotPassword = { /* TODO */ },
+            onNavigateToRegister = { /* TODO */ }
+        )
+    } else {
+        val navItems = remember(userRole) {
+            if (userRole == "admin") {
+                listOf(BottomNavItem.Home, BottomNavItem.Explore, BottomNavItem.Profile)
+            } else {
+                listOf(BottomNavItem.Home, BottomNavItem.Explore, BottomNavItem.Rewards, BottomNavItem.Profile)
+            }
+        }
 
-    Scaffold(
-        bottomBar = { StyledBottomBar(navController = navController, items = navItems) }
-    ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = BottomNavItem.Home.route,
-            modifier = Modifier.padding(innerPadding)
-        ) {
-            composable(BottomNavItem.Home.route) {
-                if (userRole == "admin") {
-                    AdminHomeScreen()
-                } else {
-                    TenantHomeScreen(
-                        onNavigateToPayment = { bookingId, amount, roomNumber ->
-                            navController.navigate("payment/$bookingId/$amount/$roomNumber")
-                        },
-                        onNavigateToPaymentHistory = onNavigateToPaymentHistory
+        Scaffold(
+            bottomBar = { StyledBottomBar(navController = navController, items = navItems) }
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = BottomNavItem.Home.route,
+                modifier = Modifier.padding(innerPadding)
+            ) {
+                composable(BottomNavItem.Home.route) {
+                    if (userRole == "admin") {
+                        AdminHomeScreen()
+                    } else {
+                        TenantHomeScreen(
+                            onNavigateToPayment = { bookingId, amount, roomNumber ->
+                                navController.navigate("payment/$bookingId/$amount/$roomNumber")
+                            },
+                            onNavigateToPaymentHistory = onNavigateToPaymentHistory
+                        )
+                    }
+                }
+                composable(BottomNavItem.Explore.route) {
+                    RoomListScreen(onNavigateToPayment = { bookingId, amount, roomNumber ->
+                        navController.navigate("payment/$bookingId/$amount/$roomNumber")
+                    })
+                }
+                composable(BottomNavItem.Rewards.route) {
+                    if (userRole != "admin") {
+                        RewardsScreen()
+                    }
+                }
+                composable(BottomNavItem.Profile.route) {
+                    ProfileScreen(onSignOut = {
+                        viewModel.onSignOut()
+                        onSignOut()
+                    })
+                }
+
+                composable(
+                    route = "payment/{bookingId}/{amount}/{roomNumber}",
+                    arguments = listOf(
+                        navArgument("bookingId") { type = NavType.StringType },
+                        navArgument("amount") { type = NavType.FloatType },
+                        navArgument("roomNumber") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
+                    val amount = backStackEntry.arguments?.getFloat("amount")?.toDouble() ?: 0.0
+                    val roomNumber = backStackEntry.arguments?.getString("roomNumber") ?: ""
+
+                    PaymentScreen(
+                        bookingId = bookingId,
+                        amount = amount,
+                        roomNumber = roomNumber,
+                        onPaymentSuccess = { navController.popBackStack() },
+                        onBack = { navController.popBackStack() }
                     )
                 }
-            }
-            composable(BottomNavItem.Explore.route) {
-                RoomListScreen(
-                    onNavigateToPayment = { bookingId, amount, roomNumber ->
-                        navController.navigate("payment/$bookingId/$amount/$roomNumber")
-                    }
-                )
-            }
-            composable(BottomNavItem.Rewards.route) {
-                if (userRole != "admin") {
-                    RewardsScreen()
-                }
-            }
-            composable(BottomNavItem.Profile.route) {
-                ProfileScreen(onSignOut = onSignOut)
-            }
-
-            composable(
-                route = "payment/{bookingId}/{amount}/{roomNumber}",
-                arguments = listOf(
-                    navArgument("bookingId") { type = NavType.StringType },
-                    navArgument("amount") { type = NavType.FloatType },
-                    navArgument("roomNumber") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
-                val amount = backStackEntry.arguments?.getFloat("amount")?.toDouble() ?: 0.0
-                val roomNumber = backStackEntry.arguments?.getString("roomNumber") ?: ""
-
-                PaymentScreen(
-                    bookingId = bookingId,
-                    amount = amount,
-                    roomNumber = roomNumber,
-                    onPaymentSuccess = { navController.popBackStack() },
-                    onBack = { navController.popBackStack() }
-                )
             }
         }
     }
@@ -173,7 +190,6 @@ fun RowScope.StyledNavigationItem(
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        // The visual pill element
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(35.dp))

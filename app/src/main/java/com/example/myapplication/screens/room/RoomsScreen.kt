@@ -266,25 +266,30 @@ fun RoomCard(
     onBook: (Room) -> Unit = {}
 ) {
     val isOccupied = !room.is_available
+    val showAdminDetails = (isAdmin || isLandlord) && isOccupied
 
     // Animation Logic
     val alphaAnim = remember { Animatable(0f) }
     val translationYAnim = remember { Animatable(100f) }
 
     LaunchedEffect(Unit) {
-        delay(index * 75L)
-        launch { alphaAnim.animateTo(1f, tween(500, easing = FastOutSlowInEasing)) }
-        launch { translationYAnim.animateTo(0f, tween(500, easing = FastOutSlowInEasing)) }
+        delay(index * 50L)
+        launch { alphaAnim.animateTo(1f, tween(400, easing = FastOutSlowInEasing)) }
+        launch { translationYAnim.animateTo(0f, tween(400, easing = FastOutSlowInEasing)) }
     }
 
-    val statusColor = if (isOccupied) Color.Gray else LightGreen
-    val cardOpacity = if (isOccupied) 0.8f else 1f
-    val formattedRent = NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(room.monthly_rent)
+    // Dynamic Styling based on state
+    val cardBackground = if (isOccupied && (isAdmin || isLandlord)) Color(0xFFF2F2F2) else Color.White
+    val elevation = if (isOccupied) 1.dp else 1.dp
 
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = cardOpacity)),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isOccupied) 0.5.dp else 4.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = cardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isOccupied) Color.LightGray.copy(alpha = 0.4f) else Color.Transparent
+        ),
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer {
@@ -292,101 +297,107 @@ fun RoomCard(
                 translationY = translationYAnim.value
             }
     ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth()
-        ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            // Header: Room Number and Status
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 Column {
                     Text(
                         text = "Room ${room.room_number}",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E232C)
+                        color = if (isOccupied) Color.DarkGray else Color(0xFF1A1C1E)
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = if (room.floor != null) "Floor ${room.floor}" else "Standard Room",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = room.type ?: "Standard Room",
+                        style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray
                     )
                 }
-                StatusBadge(isOccupied = isOccupied, color = statusColor)
+                StatusBadge(isOccupied = isOccupied)
             }
 
-            if (isOccupied && (isAdmin || isLandlord) && tenantName != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Surface(
-                    color = Color(0xFFF5F6F8),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+            // Admin-Specific "Occupied" Section
+            if (showAdminDetails) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.6f))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(12.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(DarkSlateBlue.copy(alpha = 0.1f), CircleShape),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Tenant",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(Icons.Default.Person, contentDescription = null, tint = DarkSlateBlue, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text("Current Tenant", fontSize = 11.sp, color = Color.Gray)
                         Text(
-                            text = tenantName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF1E232C)
+                            tenantName ?: "Occupant",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Color.DarkGray
                         )
                     }
                 }
             }
 
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 14.dp),
-                color = Color.LightGray.copy(alpha = 0.4f),
-                thickness = 0.5.dp
-            )
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
+            Spacer(modifier = Modifier.height(16.dp))
 
+            // Footer: Rent and Actions
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
+                    Text("Monthly Rent", fontSize = 11.sp, color = Color.Gray)
                     Text(
-                        text = "Monthly Rent",
-                        fontSize = 11.sp,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = formattedRent,
+                        text = NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(room.monthly_rent),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
-                        color = if (isOccupied) Color.DarkGray else MediumAquamarine
+                        color = if (isOccupied) Color.Gray else MediumAquamarine
                     )
                 }
 
                 if (isAdmin || isLandlord) {
-                    Row {
-                        IconButton(onClick = { onEdit(room) }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.Gray)
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        FilledIconButton(
+                            onClick = { onEdit(room) },
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = Color.White,
+                                contentColor = DarkSlateBlue
+                            )
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(18.dp))
                         }
-                        IconButton(onClick = { onDelete(room) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red.copy(alpha = 0.7f))
+                        FilledIconButton(
+                            onClick = { onDelete(room) },
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = Color(0xFFFFEBEE),
+                                contentColor = Color.Red
+                            )
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(18.dp))
                         }
                     }
                 } else if (isTenant && !isOccupied) {
                     Button(
                         onClick = { onBook(room) },
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = DarkSlateBlue),
-                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkSlateBlue)
                     ) {
                         Text("Book Now", fontWeight = FontWeight.Bold)
                     }
@@ -397,18 +408,18 @@ fun RoomCard(
 }
 
 @Composable
-fun StatusBadge(isOccupied: Boolean, color: Color) {
+fun StatusBadge(isOccupied: Boolean) {
     val text = if (isOccupied) "Occupied" else "Vacant"
-    val backgroundColor = color.copy(alpha = 0.15f)
+    val backgroundColor = if(isOccupied) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+    val textColor = if(isOccupied) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
 
     Surface(
         color = backgroundColor,
         shape = RoundedCornerShape(50),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.1f))
     ) {
         Text(
             text = text.uppercase(),
-            color = if (isOccupied) Color.DarkGray else color,
+            color = textColor,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)

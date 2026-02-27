@@ -1,5 +1,6 @@
 package com.example.myapplication.screens.room
 
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -66,8 +67,13 @@ class RoomsViewModel @Inject constructor(
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, error = null)
             try {
-                val user = authRepository.getCurrentUser()
-                val role = user?.role?.lowercase(Locale.ROOT) ?: "tenant"
+                val profileResult = authRepository.getUserProfile()
+                val profile = profileResult.getOrNull()
+
+
+
+                val role = profile?.role?.lowercase(Locale.ROOT) ?: "tenant"
+                val userId = profile?.id
 
                 // 1. Fetch the data based on role
                 when (role) {
@@ -77,13 +83,13 @@ class RoomsViewModel @Inject constructor(
                         val properties = if (role == "admin") {
                             propertyRepository.getAvailableProperties().getOrDefault(emptyList())
                         } else {
-                            propertyRepository.getPropertiesForLandlord(user!!.id).getOrDefault(emptyList())
+                            propertyRepository.getPropertiesForLandlord(userId!!).getOrDefault(emptyList())
                         }
 
                         val rooms = if (role == "admin") {
                             propertyRepository.getAllRooms().getOrDefault(emptyList())
                         } else {
-                            propertyRepository.getRoomsForLandlord(user!!.id).getOrDefault(emptyList())
+                            propertyRepository.getRoomsForLandlord(userId!!).getOrDefault(emptyList())
                         }
 
                         // Attach Tenant Names logic...
@@ -122,8 +128,8 @@ class RoomsViewModel @Inject constructor(
 
                         // Check if tenant has active booking
                         var hasBooking = false
-                        if (user != null) {
-                            val bookingsResult = bookingRepository.getBookingsForTenant(user.id)
+                        if (userId != null) {
+                            val bookingsResult = bookingRepository.getBookingsForTenant(userId)
                             val bookings = bookingsResult.getOrDefault(emptyList())
 
                             // FIX: Only block if status is 'active' (Paid).
@@ -247,12 +253,13 @@ class RoomsViewModel @Inject constructor(
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true)
             try {
-                val user = authRepository.getCurrentUser()
-                if (user != null) {
+                val profileResult = authRepository.getUserProfile()
+                val profile = profileResult.getOrNull()
+                if (profile != null) {
                     val propertyId = UUID.randomUUID().toString()
                     val newProperty = Property(
                         id = propertyId,
-                        landlord_id = user.id,
+                        landlord_id = profile.id,
                         name = propertyName,
                         address = propertyAddress,
                         description = null,
@@ -282,12 +289,13 @@ class RoomsViewModel @Inject constructor(
     fun createProperty(name: String, address: String) {
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true)
-            val user = authRepository.getCurrentUser()
+            val profileResult = authRepository.getUserProfile()
+            val profile = profileResult.getOrNull()
 
-            if (user != null) {
+            if (profile != null) {
                 val newProperty = Property(
                     id = UUID.randomUUID().toString(),
-                    landlord_id = user.id,
+                    landlord_id = profile.id,
                     name = name,
                     address = address,
                     description = "",
@@ -315,12 +323,13 @@ class RoomsViewModel @Inject constructor(
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, isBookingSuccess = false)
             try {
-                val user = authRepository.getCurrentUser()
-                if (user != null) {
+                val profileResult = authRepository.getUserProfile()
+                val profile = profileResult.getOrNull()
+                if (profile != null) {
                     val booking = Booking(
                         id = UUID.randomUUID().toString(),
                         room_id = room.id,
-                        tenant_id = user.id,
+                        tenant_id = profile.id,
                         start_date = java.time.LocalDate.now().toString(), // Default to today
                         end_date = java.time.LocalDate.now().plusMonths(1).toString(), // Default 1 month
                         monthly_rent = room.monthly_rent,

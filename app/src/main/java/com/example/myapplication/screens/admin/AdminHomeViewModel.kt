@@ -5,7 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myapplication.data.models.Booking
+import com.example.myapplication.data.local.AdminDashboardDao
+import com.example.myapplication.data.local.AdminDashboardEntity
 import com.example.myapplication.data.models.RecentPayment
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.BookingRepository
@@ -31,7 +32,8 @@ class AdminHomeViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val propertyRepository: PropertyRepository,
     private val bookingRepository: BookingRepository,
-    private val paymentRepository: PaymentRepository
+    private val paymentRepository: PaymentRepository,
+    private val adminDashboardDao: AdminDashboardDao
 ) : ViewModel() {
 
     var uiState by mutableStateOf(AdminDashboardState())
@@ -44,34 +46,35 @@ class AdminHomeViewModel @Inject constructor(
     fun loadDashboardData() {
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, error = null)
-            try {
-                val user = authRepository.getCurrentUser()
-                if (user == null) {
-                    uiState = uiState.copy(isLoading = false, error = "User not found")
-                    return@launch
-                }
+            val profileResult = authRepository.getUserProfile()
+            val profile = profileResult.getOrNull()
 
+            if (profile == null) {
+                uiState = uiState.copy(isLoading = false, error = "User not found")
+                return@launch
+            }
+
+            try {
                 // 1. Fetch Rooms
-                val roomsResult = propertyRepository.getRoomsForLandlord(user.id)
-                val rooms = roomsResult.getOrNull() ?: emptyList()
+                val roomsResult = propertyRepository.getRoomsForLandlord(profile.id)
+                val rooms = roomsResult.getOrThrow()
                 val totalRooms = rooms.size
                 val availableRooms = rooms.count { it.is_available }
 
                 // 2. Fetch Bookings
-                val bookingsResult = bookingRepository.getBookingsForLandlord(user.id)
-                val bookings = bookingsResult.getOrNull() ?: emptyList()
-                
+                val bookingsResult = bookingRepository.getBookingsForLandlord(profile.id)
+                val bookings = bookingsResult.getOrThrow()
+
                 val activeTenants = bookings.count { it.status == "active" }
                 val pendingRequests = bookings.count { it.status == "pending" }
-                
-                // Simple revenue calc: Sum of monthly rent for active paid bookings
+
                 val estimatedRevenue = bookings
                     .filter { it.status == "active" && it.payment_status == "paid" }
                     .sumOf { it.monthly_rent }
 
                 // 3. Fetch Recent Payments
-                val recentPaymentsResult = paymentRepository.getRecentPayments(user.id)
-                val recentPayments = recentPaymentsResult.getOrNull() ?: emptyList()
+                val recentPaymentsResult = paymentRepository.getRecentPayments(profile.id)
+                val recentPayments = recentPaymentsResult.getOrThrow()
 
                 uiState = uiState.copy(
                     isLoading = false,
@@ -83,8 +86,32 @@ class AdminHomeViewModel @Inject constructor(
                     recentPayments = recentPayments
                 )
 
+                adminDashboardDao.saveDashboard(
+                    AdminDashboardEntity(
+                        userId = profile.id,
+                        totalRooms = totalRooms,
+                        availableRooms = availableRooms,
+                        activeTenants = activeTenants,
+                        pendingRequests = pendingRequests,
+                        estimatedRevenue = estimatedRevenue
+                    )
+                )
+
             } catch (e: Exception) {
-                uiState = uiState.copy(isLoading = false, error = e.message)
+                val cached = adminDashboardDao.getDashboard(profile.id)
+
+                if (cached != null) {
+                    uiState = uiState.copy(
+                        isLoading = false,
+                        totalRooms = cached.totalRooms,
+                        availableRooms = cached.availableRooms,
+                        activeTenants = cached.activeTenants,
+                        pendingRequests = cached.pendingRequests,
+                        estimatedRevenue = cached.estimatedRevenue
+                    )
+                } else {
+                    uiState = uiState.copy(isLoading = false, error = e.message)
+                }
             }
         }
     }

@@ -14,13 +14,31 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
+
     var userRole by mutableStateOf<String?>(null)
+        private set
+
+    var isLoading by mutableStateOf(true)
         private set
 
     init {
         viewModelScope.launch {
-            val user = authRepository.getCurrentUser()
-            userRole = user?.role
+            val hasSession = authRepository.hasValidSession()
+            if (hasSession) {
+                userRole = authRepository.getUserProfile().getOrNull()?.role
+            }
+            isLoading = false
+        }
+    }
+
+    fun onLoginSuccess(role: String) {
+        userRole = role
+    }
+
+    fun onSignOut() {
+        viewModelScope.launch {
+            authRepository.signOut()
+            userRole = null
         }
     }
 }
