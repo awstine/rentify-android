@@ -70,8 +70,6 @@ class RoomsViewModel @Inject constructor(
                 val profileResult = authRepository.getUserProfile()
                 val profile = profileResult.getOrNull()
 
-
-
                 val role = profile?.role?.lowercase(Locale.ROOT) ?: "tenant"
                 val userId = profile?.id
 

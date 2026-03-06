@@ -1,5 +1,6 @@
 package com.example.myapplication.screens.admin
 
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -46,23 +47,46 @@ class AdminHomeViewModel @Inject constructor(
     fun loadDashboardData() {
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, error = null)
-            val profileResult = authRepository.getUserProfile()
-            val profile = profileResult.getOrNull()
+            
+            // 1. Get User ID - try network/metadata first, then cached
+            val profile = authRepository.getUserProfile().getOrNull() 
+                ?: authRepository.getUserFromMetadata()
+                ?: authRepository.getCachedUserId()?.let { id -> 
+                    // Create a shell user if we only have the ID
+                    com.example.myapplication.data.models.User(id = id, email = "", phone_number = null, id_number = null, role = "admin", full_name = null, created_at = null)
+                }
 
             if (profile == null) {
                 uiState = uiState.copy(isLoading = false, error = "User not found")
                 return@launch
             }
 
+            val userId = profile.id
+            Log.d("AdminHomeViewModel", "Loading data for user: $userId")
+
+            // 2. Try to load cached data immediately for better offline UX
+            val cached = adminDashboardDao.getDashboard(userId)
+            if (cached != null) {
+                uiState = uiState.copy(
+                    totalRooms = cached.totalRooms,
+                    availableRooms = cached.availableRooms,
+                    activeTenants = cached.activeTenants,
+                    pendingRequests = cached.pendingRequests,
+                    estimatedRevenue = cached.estimatedRevenue
+                )
+                // If we have cached data, we can stop showing the spinner if we're offline
+            }
+
             try {
-                // 1. Fetch Rooms
-                val roomsResult = propertyRepository.getRoomsForLandlord(profile.id)
+                // 3. Fetch Fresh Data from Network
+                // Fetch Rooms
+                val roomsResult = propertyRepository.getRoomsForLandlord(userId)
                 val rooms = roomsResult.getOrThrow()
                 val totalRooms = rooms.size
                 val availableRooms = rooms.count { it.is_available }
 
-                // 2. Fetch Bookings
-                val bookingsResult = bookingRepository.getBookingsForLandlord(profile.id)
+                // Fetch Bookings
+                val bookingsResult = bookingRepository.getBookingsForLandlord(userId)
                 val bookings = bookingsResult.getOrThrow()
 
                 val activeTenants = bookings.count { it.status == "active" }
@@ -72,10 +96,11 @@ class AdminHomeViewModel @Inject constructor(
                     .filter { it.status == "active" && it.payment_status == "paid" }
                     .sumOf { it.monthly_rent }
 
-                // 3. Fetch Recent Payments
-                val recentPaymentsResult = paymentRepository.getRecentPayments(profile.id)
+                // Fetch Recent Payments
+                val recentPaymentsResult = paymentRepository.getRecentPayments(userId)
                 val recentPayments = recentPaymentsResult.getOrThrow()
 
+                // 4. Update UI and Cache
                 uiState = uiState.copy(
                     isLoading = false,
                     totalRooms = totalRooms,
@@ -83,12 +108,13 @@ class AdminHomeViewModel @Inject constructor(
                     activeTenants = activeTenants,
                     pendingRequests = pendingRequests,
                     estimatedRevenue = estimatedRevenue,
-                    recentPayments = recentPayments
+                    recentPayments = recentPayments,
+                    error = null
                 )
 
                 adminDashboardDao.saveDashboard(
                     AdminDashboardEntity(
-                        userId = profile.id,
+                        userId = userId,
                         totalRooms = totalRooms,
                         availableRooms = availableRooms,
                         activeTenants = activeTenants,
@@ -98,19 +124,12 @@ class AdminHomeViewModel @Inject constructor(
                 )
 
             } catch (e: Exception) {
-                val cached = adminDashboardDao.getDashboard(profile.id)
-
+                Log.e("AdminHomeViewModel", "Network fetch failed", e)
+                // If network fails, we keep the cached data already in state
                 if (cached != null) {
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        totalRooms = cached.totalRooms,
-                        availableRooms = cached.availableRooms,
-                        activeTenants = cached.activeTenants,
-                        pendingRequests = cached.pendingRequests,
-                        estimatedRevenue = cached.estimatedRevenue
-                    )
+                    uiState = uiState.copy(isLoading = false, error = null)
                 } else {
-                    uiState = uiState.copy(isLoading = false, error = e.message)
+                    uiState = uiState.copy(isLoading = false, error = "Offline: No cached data available")
                 }
             }
         }

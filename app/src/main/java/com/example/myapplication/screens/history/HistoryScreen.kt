@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
@@ -82,8 +83,15 @@ fun HistoryScreen(
                     CircularProgressIndicator(color = NavyPrimary)
                 }
             } else if (state.error != null) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Error: ${state.error}", color = Color.Red, modifier = Modifier.padding(16.dp))
+                Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.WifiOff, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.Gray)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(text = state.error ?: "No internet connection", color = Color.Gray, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+                        Button(onClick = { viewModel.loadHistory() }, modifier = Modifier.padding(top = 16.dp)) {
+                            Text("Retry")
+                        }
+                    }
                 }
             } else if (state.transactions.isEmpty()) {
                 EmptyHistoryState()
@@ -92,7 +100,6 @@ fun HistoryScreen(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // CHANGED: Use itemsIndexed to pass the index to the item
                     itemsIndexed(state.transactions) { index, transaction ->
                         HistoryItem(transaction = transaction, index = index)
                     }
@@ -223,7 +230,7 @@ fun HistoryItem(transaction: PaymentTransaction, index: Int) {
     val formattedAmount = NumberFormat.getCurrencyInstance(Locale("en", "KE")).format(amountValue)
 
     Card(
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier

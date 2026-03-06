@@ -58,9 +58,9 @@ fun RoomListScreen(
     var roomToDelete by remember { mutableStateOf<Room?>(null) }
     var roomToBook by remember { mutableStateOf<Room?>(null) }
 
-    LaunchedEffect(Unit) {
-        viewModel.loadRooms()
-    }
+//    LaunchedEffect(Unit) {
+//        viewModel.loadRooms()
+//    }
 
     LaunchedEffect(state.isBookingSuccess) {
         if (state.isBookingSuccess && state.bookingId != null && state.bookingRoom != null) {
@@ -611,6 +611,8 @@ fun AddRoomDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+//                TODO(Check on creating a new property its not neccesary for now)
+                //Remove later
                 Button(
                     onClick = {
                         val newRoom = Room(
@@ -715,12 +717,6 @@ fun EditRoomDialog(
                         label = "Room Number"
                     )
                     CustomOutlinedTextField(
-                        value = floor,
-                        onValueChange = { floor = it },
-                        label = "Floor (Optional)",
-                        keyboardType = KeyboardType.Number
-                    )
-                    CustomOutlinedTextField(
                         value = rent,
                         onValueChange = { rent = it },
                         label = "Monthly Rent",
@@ -758,7 +754,6 @@ fun EditRoomDialog(
                         onClick = {
                             val updatedRoom = room.copy(
                                 room_number = roomNumber,
-                                floor = floor.toIntOrNull(),
                                 monthly_rent = rent.toDoubleOrNull() ?: 0.0,
                                 is_available = isAvailable
                             )

@@ -1,6 +1,10 @@
 package com.example.myapplication.di
 
-import com.example.myapplication.BuildConfig
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStoreFile
 import com.example.myapplication.data.local.RoomDao
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.BookingRepository
@@ -9,17 +13,22 @@ import com.example.myapplication.data.repository.PropertyRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.createSupabaseClient
-import io.github.jan.supabase.postgrest.Postgrest
-import io.github.jan.supabase.realtime.Realtime
-import io.github.jan.supabase.storage.Storage
+
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    @Provides
+    @Singleton
+    fun provideDataStore(@ApplicationContext context: Context): DataStore<Preferences> {
+        return PreferenceDataStoreFactory.create(
+            produceFile = { context.preferencesDataStoreFile("user_prefs") }
+        )
+    }
 
     @Provides
     @Singleton
@@ -29,8 +38,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideAuthRepository(): AuthRepository {
-        return AuthRepository()
+    fun provideAuthRepository(dataStore: DataStore<Preferences>): AuthRepository {
+        return AuthRepository(dataStore)
     }
 
     @Provides
@@ -43,19 +52,5 @@ object AppModule {
     @Singleton
     fun provideBookingRepository(): BookingRepository {
         return BookingRepository()
-    }
-
-    @Provides
-    @Singleton
-    fun provideSupabaseClient(): SupabaseClient {
-        return createSupabaseClient(
-            supabaseUrl = BuildConfig.SUPABASE_URL,
-            supabaseKey = BuildConfig.SUPABASE_KEY
-        ) {
-            //install(GoTrue)
-            install(Postgrest)
-            install(Storage)
-            install(Realtime)
-        }
     }
 }

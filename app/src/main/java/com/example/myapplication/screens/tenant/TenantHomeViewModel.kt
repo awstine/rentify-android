@@ -51,9 +51,13 @@ class TenantHomeViewModel @Inject constructor(
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, error = null)
 
-            // 1. Get User
+            // 1. Get User - Try fresh profile first, fallback to local metadata if offline
             val profileResult = authRepository.getUserProfile()
-            val profile = profileResult.getOrNull()
+            var profile = profileResult.getOrNull()
+
+            if (profile == null) {
+                profile = authRepository.getUserFromMetadata()
+            }
 
             if (profile == null) {
                 uiState = uiState.copy(isLoading = false, error = "User not found")
@@ -111,6 +115,7 @@ class TenantHomeViewModel @Inject constructor(
                     activeSession = activeSession
                 )
             } catch (e: Exception) {
+                // Offline fallback - Load from Room DB
                 val cached = tenantDashboardDao.getDashboard(profile.id)
 
                 if (cached != null) {
@@ -118,7 +123,7 @@ class TenantHomeViewModel @Inject constructor(
                         isLoading = false,
                         roomNumber = cached.roomNumber,
                         activeBooking = Booking(
-                            id = "",
+                            id = "cached",
                             room_id = "",
                             tenant_id = profile.id,
                             monthly_rent = cached.monthlyRent ?: 0.0,
@@ -128,6 +133,8 @@ class TenantHomeViewModel @Inject constructor(
                             end_date = cached.dueDate ?: ""
                         )
                     )
+                } else {
+                    uiState = uiState.copy(isLoading = false, error = "Offline: No cached data available")
                 }
             }
         }

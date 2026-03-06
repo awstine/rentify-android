@@ -41,30 +41,47 @@ class RewardsViewModel @Inject constructor(
     fun loadRewards() {
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, error = null)
-            val profileResult = authRepository.getUserProfile()
-            val profile = profileResult.getOrNull()
-            if (profile != null) {
-                val bookingsResult = bookingRepository.getBookingsForTenant(profile.id)
+
+            // Try fresh profile, fallback to metadata or cached ID
+            var profile = authRepository.getUserProfile().getOrNull()
+            if (profile == null) {
+                profile = authRepository.getUserFromMetadata()
+            }
+
+            val userId = profile?.id ?: authRepository.getCachedUserId()
+
+            if (userId == null) {
+                uiState = uiState.copy(isLoading = false, error = "User not found")
+                return@launch
+            }
+
+            val rewardsList = listOf(
+                Reward("5% Rent Discount", "Pay rent on time for 6 consecutive months", 6, Icons.Default.Star),
+                Reward("Referral", "Refer a friend who moves in", 1, Icons.Default.RoomPreferences),
+                Reward("Car Wash", "Report a maintenance issue", 1, Icons.Default.LocalCarWash),
+                Reward("Gift Card", "Renew your lease early", 3, Icons.Default.CardGiftcard)
+            )
+
+            try {
+                val bookingsResult = bookingRepository.getBookingsForTenant(userId)
                 val bookings = bookingsResult.getOrNull() ?: emptyList()
 
                 // Simple logic: Count paid bookings as streak
-                // In a real app, you would check if they are consecutive and on time.
                 val paidBookingsCount = bookings.count { it.payment_status == "paid" }
-
-                val rewardsList = listOf(
-                    Reward("5% Rent Discount", "Pay rent on time for 6 consecutive months", 6, Icons.Default.Star),
-                    Reward("Referral", "Refer a friend who moves in", 1, Icons.Default.RoomPreferences),
-                    Reward("Car Wash", "Report a maintenance issue", 1, Icons.Default.LocalCarWash),
-                    Reward("Gift Card", "Renew your lease early", 3, Icons.Default.CardGiftcard)
-                )
 
                 uiState = uiState.copy(
                     isLoading = false,
                     streak = paidBookingsCount,
                     rewards = rewardsList
                 )
-            } else {
-                uiState = uiState.copy(isLoading = false, error = "User not found")
+            } catch (e: Exception) {
+                // If offline, still show the rewards list with 0 streak or show as "Offline"
+                uiState = uiState.copy(
+                    isLoading = false,
+                    streak = 0,
+                    rewards = rewardsList,
+                    error = "Offline: Showing default rewards"
+                )
             }
         }
     }

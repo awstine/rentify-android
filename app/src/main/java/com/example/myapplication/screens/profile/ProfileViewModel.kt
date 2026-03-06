@@ -26,12 +26,28 @@ class ProfileViewModel @Inject constructor(
 
     fun loadUserProfile() {
         viewModelScope.launch {
-            uiState = uiState.copy(isLoading = true)
+            uiState = uiState.copy(isLoading = true, error = null)
+            
             val result = authRepository.getUserProfile()
-            uiState = result.fold(
-                onSuccess = { user -> uiState.copy(isLoading = false, user = user) },
-                onFailure = { error -> uiState.copy(isLoading = false, error = error.message) }
-            )
+            
+            if (result.isSuccess) {
+                uiState = uiState.copy(isLoading = false, user = result.getOrNull(), error = null)
+            } else {
+                // Network failed, try offline metadata
+                val offlineUser = authRepository.getUserFromMetadata()
+                if (offlineUser != null) {
+                    uiState = uiState.copy(
+                        isLoading = false, 
+                        user = offlineUser,
+                        error = "No internet connection"
+                    )
+                } else {
+                    uiState = uiState.copy(
+                        isLoading = false, 
+                        error = "No internet connection"
+                    )
+                }
+            }
         }
     }
 
@@ -43,9 +59,9 @@ class ProfileViewModel @Inject constructor(
                 onSuccess = { imageUrl ->
                     val updatedUser = uiState.user?.copy(profile_image_url = imageUrl)
                     _profilePhotoUpdateSuccess.emit(Unit)
-                    uiState.copy(isLoading = false, user = updatedUser)
+                    uiState.copy(isLoading = false, user = updatedUser, error = null)
                 },
-                onFailure = { error -> uiState.copy(isLoading = false, error = error.message) }
+                onFailure = { error -> uiState.copy(isLoading = false, error = "No internet connection") }
             )
         }
     }

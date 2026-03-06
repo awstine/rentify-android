@@ -1,5 +1,6 @@
 package com.example.myapplication.screens.auth.login
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,9 +23,10 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -69,7 +71,7 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White) // KEEP WHITE BACKGROUND
+            .background(Color.White)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 32.dp)
             .imePadding(),
@@ -110,7 +112,27 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // INPUT CARD CONTAINER (LIKE SCREENSHOT)
+        // ERROR MESSAGE DISPLAY
+        AnimatedVisibility(visible = uiState.passwordError != null || uiState.usernameError != null) {
+            val errorText = uiState.passwordError ?: uiState.usernameError ?: ""
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                Text(
+                    text = errorText,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(16.dp),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+        // INPUT CARD CONTAINER
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
@@ -128,10 +150,11 @@ fun LoginScreen(
                     onValueChange = { viewModel.onEvent(LoginUiEvent.UsernameChanged(it)) },
                     label = "Email",
                     trailingIconVector = Icons.Default.Email,
-                    keyboardType = KeyboardType.Email
+                    keyboardType = KeyboardType.Email,
+                    isError = uiState.usernameError != null
                 )
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Gray.copy(alpha = 0.2f))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Gray.copy(alpha = 0.2f))
 
                 // PASSWORD FIELD
                 StyledLoginTextField(
@@ -140,7 +163,8 @@ fun LoginScreen(
                     label = "Password",
                     trailingIconVector = Icons.Default.Lock,
                     isPassword = true,
-                    keyboardType = KeyboardType.Password
+                    keyboardType = KeyboardType.Password,
+                    isError = uiState.passwordError != null
                 )
             }
         }
@@ -214,12 +238,13 @@ fun StyledLoginTextField(
     label: String,
     trailingIconVector: ImageVector,
     isPassword: Boolean = false,
-    keyboardType: KeyboardType = KeyboardType.Text
+    keyboardType: KeyboardType = KeyboardType.Text,
+    isError: Boolean = false
 ) {
     Column {
         Text(
             text = label,
-            color = TextGray,
+            color = if (isError) MaterialTheme.colorScheme.error else TextGray,
             fontSize = 14.sp
         )
 
@@ -234,16 +259,23 @@ fun StyledLoginTextField(
                 fontWeight = FontWeight.SemiBold
             ),
             singleLine = true,
+            isError = isError,
             visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             trailingIcon = {
-                Icon(trailingIconVector, contentDescription = null, tint = TextGray)
+                Icon(
+                    imageVector = trailingIconVector,
+                    contentDescription = null,
+                    tint = if (isError) MaterialTheme.colorScheme.error else TextGray
+                )
             },
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
+                errorIndicatorColor = Color.Transparent,
+                errorContainerColor = Color.Transparent,
                 cursorColor = Color.Black,
                 focusedTextColor = Color.Black,
                 unfocusedTextColor = Color.Black

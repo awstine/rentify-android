@@ -8,28 +8,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Badge
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -80,7 +66,7 @@ fun ProfileScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top =30.dp, bottom = 8.dp, start = 24.dp, end = 24.dp),
+                    .padding(top = 30.dp, bottom = 8.dp, start = 24.dp, end = 24.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Text(
@@ -92,13 +78,20 @@ fun ProfileScreen(
             }
         }
     ) { paddingValues ->
-        if (state.isLoading) {
+        if (state.isLoading && state.user == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        } else if (state.error != null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = "Error: ${state.error}", color = Color.Red)
+        } else if (state.error != null && state.user == null) {
+            Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.WifiOff, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color.Gray)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(text = state.error ?: "No internet connection", color = Color.Gray, fontWeight = FontWeight.Medium)
+                    Button(onClick = { viewModel.loadUserProfile() }, modifier = Modifier.padding(top = 16.dp)) {
+                        Text("Retry")
+                    }
+                }
             }
         } else {
             val user = state.user
@@ -111,9 +104,32 @@ fun ProfileScreen(
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Offline Warning Banner
+                if (state.error != null) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CloudOff, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "No internet connection",
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
                 Column(
                     modifier = Modifier
-                        .padding(vertical = 32.dp)
+                        .padding(vertical = 24.dp)
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {

@@ -35,23 +35,30 @@ class HistoryViewModel @Inject constructor(
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, error = null)
 
-            val profileResult = authRepository.getUserProfile()
-            val profile = profileResult.getOrNull()
-            if (profile != null) {
-                val result = paymentRepository.getTenantPaymentHistory(profile.id)
+            // Robust Fallback: Try fresh profile -> Metadata -> Cached ID
+            var profile = authRepository.getUserProfile().getOrNull()
+            if (profile == null) {
+                profile = authRepository.getUserFromMetadata()
+            }
+            
+            val userId = profile?.id ?: authRepository.getCachedUserId()
+
+            if (userId != null) {
+                val result = paymentRepository.getTenantPaymentHistory(userId)
                 if (result.isSuccess) {
                     uiState = uiState.copy(
                         isLoading = false,
-                        transactions = result.getOrNull() ?: emptyList()
+                        transactions = result.getOrNull() ?: emptyList(),
+                        error = null
                     )
                 } else {
                     uiState = uiState.copy(
                         isLoading = false,
-                        error = result.exceptionOrNull()?.message
+                        error = "No internet connection"
                     )
                 }
             } else {
-                uiState = uiState.copy(isLoading = false, error = "User not logged in")
+                uiState = uiState.copy(isLoading = false, error = "User not found")
             }
         }
     }

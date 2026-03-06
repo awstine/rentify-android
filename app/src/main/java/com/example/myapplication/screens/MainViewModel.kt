@@ -1,5 +1,6 @@
 package com.example.myapplication.screens
 
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -23,19 +24,49 @@ class MainViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val hasSession = authRepository.hasValidSession()
-            if (hasSession) {
-                userRole = authRepository.getUserProfile().getOrNull()?.role
+            try {
+                val hasSession = authRepository.hasValidSession()
+                Log.d("MainViewModel", "Has valid session: $hasSession")
+                
+                if (hasSession) {
+                    // 1. Try to get role from network/metadata (getUserProfile handles both)
+                    val networkResult = authRepository.getUserProfile()
+                    val networkRole = networkResult.getOrNull()?.role
+                    
+                    if (networkRole != null) {
+                        Log.d("MainViewModel", "Found role from network/metadata: $networkRole")
+                        userRole = networkRole
+                        // Role is already cached inside getUserProfile, but we can ensure it here too
+                        authRepository.saveUserRole(networkRole)
+                    } else {
+                        // 2. Fallback to local cache if network/metadata fails
+                        val cachedRole = authRepository.getCachedUserRole()
+                        Log.d("MainViewModel", "Fallback to cached role: $cachedRole")
+                        userRole = cachedRole
+                    }
+                } else {
+                    userRole = null
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Error initializing session", e)
+                userRole = authRepository.getCachedUserRole()
+            } finally {
+                isLoading = false
+                Log.d("MainViewModel", "Final user role: $userRole")
             }
-            isLoading = false
         }
     }
 
     fun onLoginSuccess(role: String) {
+        Log.d("MainViewModel", "Login success, setting role: $role")
         userRole = role
+        viewModelScope.launch {
+            authRepository.saveUserRole(role)
+        }
     }
 
     fun onSignOut() {
+        Log.d("MainViewModel", "Signing out")
         viewModelScope.launch {
             authRepository.signOut()
             userRole = null

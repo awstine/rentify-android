@@ -8,7 +8,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.models.User
 import com.example.myapplication.data.repository.AuthRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 // 1. UI State: Represents all the state needed for the Register Screen.
 data class RegisterUiState(
@@ -17,7 +19,6 @@ data class RegisterUiState(
     val password: String = "",
     val rememberMe: Boolean = false,
     val isPasswordVisible: Boolean = false,
-
     // State for validation errors
     val usernameError: String? = null,
     val mobileError: String? = null,
@@ -38,11 +39,10 @@ sealed interface RegisterUiEvent {
     object Submit : RegisterUiEvent
 }
 
-
-class RegisterViewModel : ViewModel() {
-
-    // Create an instance of the repository
-    private val authRepository = AuthRepository()
+@HiltViewModel
+class RegisterViewModel @Inject constructor(
+    private val authRepository: AuthRepository
+) : ViewModel() {
 
     var uiState by mutableStateOf(RegisterUiState())
         private set
