@@ -4,10 +4,16 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class SignUpDto(
+data class SignUpRequestDto(
     val email: String,
     val password: String,
     val userData: UserDto,
+)
+
+@Serializable
+data class SignInRequestDto(
+    val email: String,
+    val password: String
 )
 
 

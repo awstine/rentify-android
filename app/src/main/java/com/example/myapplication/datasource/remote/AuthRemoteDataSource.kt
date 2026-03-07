@@ -14,8 +14,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 interface AuthRemoteDataSource {
-    suspend fun signUp(request: SignUpDto): Result<UserResponseDto>
-    suspend fun signIn(email: String, password: String): Result<Boolean>
+    suspend fun signUp(request: SignUpRequestDto): Result<UserResponseDto>
+    suspend fun signIn(request: SignInRequestDto): Result<Boolean>
     suspend fun signOut(): Result<Boolean>
     suspend fun getUserProfile(): Result<User>
     suspend fun uploadProfilePhoto(uri: Uri): Result<String>
@@ -25,7 +25,7 @@ interface AuthRemoteDataSource {
 
 class AuthRepositoryImpl(private val apiClient: SupabaseClient) : AuthRemoteDataSource {
 
-    override suspend fun signUp(request: SignUpDto): Result<UserResponseDto> {
+    override suspend fun signUp(request: SignUpRequestDto): Result<UserResponseDto> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("AuthRepository", "Starting signup for email: ${request.email}")
@@ -56,7 +56,6 @@ class AuthRepositoryImpl(private val apiClient: SupabaseClient) : AuthRemoteData
                     profileImageUrl = request.userData.profilePhotoUrl
                 )
                 Result.success(responseDto)
-
             } catch (e: Exception) {
                 Log.e("AuthRepository", "Signup failed", e)
                 Result.failure(e)
@@ -64,12 +63,12 @@ class AuthRepositoryImpl(private val apiClient: SupabaseClient) : AuthRemoteData
         }
     }
 
-    override suspend fun signIn(email: String, password: String): Result<Boolean> {
+    override suspend fun signIn(request: SignInRequestDto): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
                 apiClient.client.auth.signInWith(Email) {
-                    this.email = email
-                    this.password = password
+                    this.email = request.email
+                    this.password = request.password
                 }
                 Result.success(true)
             } catch (e: Exception) {

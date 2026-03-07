@@ -2,6 +2,7 @@ package com.example.myapplication.data.models
 
 import com.example.myapplication.datasource.remote.Role
 import com.example.myapplication.datasource.remote.UserDto
+import com.example.myapplication.datasource.remote.UserResponseDto
 import kotlinx.datetime.LocalDateTime
 
 data class User(
@@ -36,4 +37,16 @@ fun UserDto.toModel (): User =
         full_name = fullName,
         created_at = LocalDateTime.toString(),
         profileImageUrl = profilePhotoUrl,
+    )
+
+fun UserResponseDto.toUser(): User =
+    User(
+        id = id,
+        email = "",
+        phoneNumber,
+        id_number = "",
+        role = role,
+        full_name = fullName,
+        created_at = LocalDateTime.toString(),
+        profileImageUrl = profileImageUrl,
     )

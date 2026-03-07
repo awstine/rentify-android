@@ -11,6 +11,7 @@ import com.example.myapplication.data.repository.AuthRepositoryImpl
 import com.example.myapplication.data.repository.BookingRepository
 import com.example.myapplication.data.repository.PaymentRepository
 import com.example.myapplication.data.repository.PropertyRepository
+import com.example.myapplication.datasource.remote.AuthRemoteDataSource
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -39,8 +40,10 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideAuthRepository(): AuthRepository {
-        return AuthRepository()
+    fun provideAuthRepository(
+        remoteDataSource: AuthRemoteDataSource
+    ): AuthRepository {
+        return AuthRepositoryImpl(remoteDataSource)
     }
 
     @Provides

@@ -2,20 +2,22 @@ package com.example.myapplication.data.repository
 
 import android.net.Uri
 import android.util.Log
+import com.example.myapplication.data.models.SignInRequest
 import com.example.myapplication.data.models.SignUpRequest
 import com.example.myapplication.data.models.User
+import com.example.myapplication.data.models.toDto
+import com.example.myapplication.data.models.toUser
 import com.example.myapplication.di.SupabaseClient
 import com.example.myapplication.datasource.remote.AuthRemoteDataSource
 import io.github.jan.supabase.gotrue.auth
-import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 interface AuthRepository{
-    suspend fun signUp(email: String, password: String, userData: User): Result<User>
-    suspend fun signIn(email: String, password: String): Result<Boolean>
+    suspend fun signUp(request: SignUpRequest): Result<User>
+    suspend fun signIn(request: SignInRequest): Result<Boolean>
     suspend fun signOut(): Result<Boolean>
     suspend fun getUserProfile(): Result<User>
     suspend fun uploadProfilePhoto(uri: Uri): Result<String>
@@ -25,33 +27,28 @@ interface AuthRepository{
 
 class AuthRepositoryImpl(
     private val remoteDataSource: AuthRemoteDataSource,
-    private val localDataSource: AuthRemoteDataSource
 ) : AuthRepository {
 
     override suspend fun signUp(request: SignUpRequest): Result<User> {
-//        val result = remoteDataSource.signIn(email, password, userData)
-//        localDataSource.insert()
-//         TODO("Complete implementation here for local and remote.")
-        return when(val response = remoteDataSource.signUp(request)){
+        val response = remoteDataSource.signUp(request.toDto())
+        return response.fold(
+            onSuccess = { userResponse ->
+                Result.success(userResponse.toUser())
+            },
 
-        }
+            onFailure = {
+                Result.failure(it)
+            }
+        )
 
     }
 
-    override suspend fun signIn(email: String, password: String): Result<Boolean> {
-        return withContext(Dispatchers.IO) {
-            try {
-                TODO()
-//                apiClient.client.auth.signInWith(Email) {
-//                    this.email = email
-//                    this.password = password
-//                }
-//                Result.success(true)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Result.failure(e)
-            }
-        }
+    override suspend fun signIn(request: SignInRequest): Result<Boolean> {
+        val response = remoteDataSource.signIn(request.toDto())
+        return response.fold(
+            onSuccess = {Result.success(true)},
+            onFailure = {Result.success(false)}
+        )
     }
 
     override suspend fun signOut(): Result<Boolean> {
