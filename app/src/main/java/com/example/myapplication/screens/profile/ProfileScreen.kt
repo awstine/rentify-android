@@ -136,7 +136,7 @@ fun ProfileScreen(
                     Box(contentAlignment = Alignment.BottomEnd) {
                         Image(
                             painter = rememberAsyncImagePainter(
-                                model = selectedImageUri ?: user?.profile_image_url
+                                model = selectedImageUri ?: user?.profileImageUrl
                                 ?: R.drawable.ic_launcher_background
                             ),
                             contentDescription = "Profile Picture",

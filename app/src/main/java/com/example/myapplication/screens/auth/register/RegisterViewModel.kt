@@ -44,6 +44,8 @@ class RegisterViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
+class RegisterViewModel(private val authRepository :AuthRepository) : ViewModel() {
+
     var uiState by mutableStateOf(RegisterUiState())
         private set
 

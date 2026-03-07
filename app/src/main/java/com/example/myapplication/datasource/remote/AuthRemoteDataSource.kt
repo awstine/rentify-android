@@ -1,20 +1,20 @@
-package com.example.myapplication.data.repository
+package com.example.myapplication.datasource.remote
 
 import android.net.Uri
 import android.util.Log
-import com.example.myapplication.data.models.SignUpRequest
 import com.example.myapplication.data.models.User
 import com.example.myapplication.di.SupabaseClient
-import com.example.myapplication.datasource.remote.AuthRemoteDataSource
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
-interface AuthRepository{
-    suspend fun signUp(email: String, password: String, userData: User): Result<User>
+interface AuthRemoteDataSource {
+    suspend fun signUp(request: SignUpDto): Result<UserResponseDto>
     suspend fun signIn(email: String, password: String): Result<Boolean>
     suspend fun signOut(): Result<Boolean>
     suspend fun getUserProfile(): Result<User>
@@ -23,32 +23,57 @@ interface AuthRepository{
     suspend fun hasValidSession(): Boolean
 }
 
-class AuthRepositoryImpl(
-    private val remoteDataSource: AuthRemoteDataSource,
-    private val localDataSource: AuthRemoteDataSource
-) : AuthRepository {
+class AuthRepositoryImpl(private val apiClient: SupabaseClient) : AuthRemoteDataSource {
 
-    override suspend fun signUp(request: SignUpRequest): Result<User> {
-//        val result = remoteDataSource.signIn(email, password, userData)
-//        localDataSource.insert()
-//         TODO("Complete implementation here for local and remote.")
-        return when(val response = remoteDataSource.signUp(request)){
+    override suspend fun signUp(request: SignUpDto): Result<UserResponseDto> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("AuthRepository", "Starting signup for email: ${request.email}")
 
+                val authResponse = apiClient.client.auth.signUpWith(Email) {
+                    this.email = request.email
+                    this.password = request.password
+
+                    this.data = buildJsonObject {
+                        put("phone_number", request.userData.phoneNumber)
+                        put("full_name", request.userData.fullName)
+                        put("role", request.userData.role.name)
+                    }
+                }
+
+                val user = authResponse ?: throw Exception("Sign up successful but no user returned")
+
+                Log.d("AuthRepository", "Auth signup successful, userId: ${user.id}")
+
+                val responseDto = UserResponseDto(
+                    id = user.id,
+                    email = user.email,
+                    phoneNumber = request.userData.phoneNumber,
+                    idNumber = null,
+                    role = request.userData.role.value,
+                    fullName = request.userData.fullName,
+                    createdAt = user.createdAt?.toString(),
+                    profileImageUrl = request.userData.profilePhotoUrl
+                )
+                Result.success(responseDto)
+
+            } catch (e: Exception) {
+                Log.e("AuthRepository", "Signup failed", e)
+                Result.failure(e)
+            }
         }
-
     }
 
     override suspend fun signIn(email: String, password: String): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
-                TODO()
-//                apiClient.client.auth.signInWith(Email) {
-//                    this.email = email
-//                    this.password = password
-//                }
-//                Result.success(true)
+                apiClient.client.auth.signInWith(Email) {
+                    this.email = email
+                    this.password = password
+                }
+                Result.success(true)
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("AuthRepository", "Sign in failed", e)
                 Result.failure(e)
             }
         }
@@ -57,28 +82,27 @@ class AuthRepositoryImpl(
     override suspend fun signOut(): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
-                SupabaseClient.client.auth.signOut()
+                apiClient.client.auth.signOut()
                 Result.success(true)
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("AuthRepository", "Sign out failed", e)
                 Result.failure(e)
             }
         }
     }
 
-
     override suspend fun uploadProfilePhoto(uri: Uri): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
                 // Ensure session exists
-                SupabaseClient.client.auth.loadFromStorage()
-                val session = SupabaseClient.client.auth.currentSessionOrNull()
+                apiClient.client.auth.loadFromStorage()
+                val session = apiClient.client.auth.currentSessionOrNull()
                     ?: throw Exception("No active session")
 
                 val userId = session.user?.id ?: throw Exception("User not found in session")
 
                 // Read image bytes
-                val bytes = SupabaseClient.appContext
+                val bytes = apiClient.appContext
                     .contentResolver
                     .openInputStream(uri)
                     ?.readBytes()
@@ -88,7 +112,7 @@ class AuthRepositoryImpl(
                 val path = "$userId/avatar.jpg"
 
                 // Upload (overwrite allowed)
-                SupabaseClient.client.storage
+                apiClient.client.storage
                     .from("avatars")
                     .upload(
                         path = path,
@@ -97,12 +121,12 @@ class AuthRepositoryImpl(
                     )
 
                 // Get public URL
-                val publicUrl = SupabaseClient.client.storage
+                val publicUrl = apiClient.client.storage
                     .from("avatars")
                     .publicUrl(path)
 
                 // Save URL to profiles table
-                SupabaseClient.client.postgrest["profiles"]
+                apiClient.client.postgrest["profiles"]
                     .update({
                         set("profileImageUrl", publicUrl)
                     }) {
@@ -122,9 +146,9 @@ class AuthRepositoryImpl(
         return withContext(Dispatchers.IO) {
             try {
                 // Ensure the session is loaded from storage before trying to access it.
-                SupabaseClient.client.auth.loadFromStorage()
+                apiClient.client.auth.loadFromStorage()
 
-                val session = SupabaseClient.client.auth.currentSessionOrNull()
+                val session = apiClient.client.auth.currentSessionOrNull()
                     ?: return@withContext Result.failure(Exception("No active session"))
 
                 val authUser = session.user
@@ -132,7 +156,7 @@ class AuthRepositoryImpl(
 
                 // 1. Try fetching profile from DB
                 try {
-                    val profile = SupabaseClient.client.postgrest["profiles"]
+                    val profile = apiClient.client.postgrest["profiles"]
                         .select { filter { eq("id", authUser.id) } }
                         .decodeSingle<User>()
                     return@withContext Result.success(profile)
@@ -160,7 +184,7 @@ class AuthRepositoryImpl(
                 // This is crucial for RLS policies on other tables (like 'rooms') to work.
                 try {
                     Log.d("AuthRepo", "Attempting to upsert missing profile for user ${authUser.id}")
-                    SupabaseClient.client.postgrest["profiles"].upsert(fallbackUser)
+                    apiClient.client.postgrest["profiles"].upsert(fallbackUser)
                     Log.d("AuthRepo", "Self-repair successful! Profile created.")
                 } catch (e: Exception) {
                     Log.e("AuthRepo", "Self-repair failed. RLS on 'profiles' might block this, or other DB error.", e)
@@ -180,12 +204,11 @@ class AuthRepositoryImpl(
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("AuthRepository", "Attempting to reset password for email: $email")
-                SupabaseClient.client.auth.resetPasswordForEmail(email)
+                apiClient.client.auth.resetPasswordForEmail(email)
                 Log.d("AuthRepository", "Password reset email sent successfully.")
                 Result.success(Unit)
             } catch (e: Exception) {
                 Log.e("AuthRepository", "Failed to send password reset email", e)
-                e.printStackTrace()
                 Result.failure(e)
             }
         }
@@ -194,8 +217,8 @@ class AuthRepositoryImpl(
     override suspend fun hasValidSession(): Boolean {
         return withContext(Dispatchers.IO) {
             try {
-                SupabaseClient.client.auth.loadFromStorage()
-                val session = SupabaseClient.client.auth.currentSessionOrNull()
+                apiClient.client.auth.loadFromStorage()
+                val session = apiClient.client.auth.currentSessionOrNull()
                 session != null
             } catch (e: Exception) {
                 Log.e("AuthRepository", "Session check failed", e)

@@ -6,13 +6,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myapplication.data.local.AdminDashboardDao
 import com.example.myapplication.data.local.AdminDashboardEntity
 import com.example.myapplication.data.models.RecentPayment
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.BookingRepository
 import com.example.myapplication.data.repository.PaymentRepository
 import com.example.myapplication.data.repository.PropertyRepository
+import com.example.myapplication.datasource.local.AdminDashboardDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject

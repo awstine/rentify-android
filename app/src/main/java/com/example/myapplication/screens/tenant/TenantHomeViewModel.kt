@@ -5,8 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myapplication.data.local.TenantDashboardDao
-import com.example.myapplication.data.local.TenantDashboardEntity
+import com.example.myapplication.datasource.local.TenantDashboardDao
+import com.example.myapplication.datasource.local.TenantDashboardEntity
 import com.example.myapplication.data.models.Booking
 import com.example.myapplication.data.models.MachineSession
 import com.example.myapplication.data.models.User

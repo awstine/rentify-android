@@ -57,7 +57,7 @@ class ProfileViewModel @Inject constructor(
             val result = authRepository.uploadProfilePhoto(uri)
             uiState = result.fold(
                 onSuccess = { imageUrl ->
-                    val updatedUser = uiState.user?.copy(profile_image_url = imageUrl)
+                    val updatedUser = uiState.user?.copy(profileImageUrl = imageUrl)
                     _profilePhotoUpdateSuccess.emit(Unit)
                     uiState.copy(isLoading = false, user = updatedUser, error = null)
                 },

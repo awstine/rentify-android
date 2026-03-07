@@ -5,8 +5,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
-import com.example.myapplication.data.local.RoomDao
+import com.example.myapplication.datasource.local.RoomDao
 import com.example.myapplication.data.repository.AuthRepository
+import com.example.myapplication.data.repository.AuthRepositoryImpl
 import com.example.myapplication.data.repository.BookingRepository
 import com.example.myapplication.data.repository.PaymentRepository
 import com.example.myapplication.data.repository.PropertyRepository
@@ -38,8 +39,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideAuthRepository(dataStore: DataStore<Preferences>): AuthRepository {
-        return AuthRepository(dataStore)
+    fun provideAuthRepository(): AuthRepository {
+        return AuthRepository()
     }
 
     @Provides
