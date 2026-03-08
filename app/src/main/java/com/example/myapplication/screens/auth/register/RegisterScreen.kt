@@ -44,7 +44,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.myapplication.R
 
 val NavyBlue = Color(0xFF1F2F43)
@@ -54,7 +54,7 @@ val TextGray = Color(0xFF6A6A6A)
 @Composable
 fun RegisterScreen(
     onRegisterSuccess: () -> Unit, // This is also used to navigate to Login
-    viewModel: RegisterViewModel = viewModel()
+    viewModel: RegisterViewModel = hiltViewModel()
 ) {
     val uiState = viewModel.uiState
 

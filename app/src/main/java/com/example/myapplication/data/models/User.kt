@@ -1,28 +1,52 @@
 package com.example.myapplication.data.models
 
-// User.kt
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import com.example.myapplication.datasource.remote.Role
+import com.example.myapplication.datasource.remote.UserDto
+import com.example.myapplication.datasource.remote.UserResponseDto
+import kotlinx.datetime.LocalDateTime
 
-@Serializable
 data class User(
     val id: String,
-
     val email: String?,
-    @SerialName("phone_number")
-
     val phone_number: String?,
-    @SerialName("id_number")
-
     val id_number: String?,
     val role: String, // 'landlord', 'tenant', 'admin'
-    @SerialName("full_name")
-
     val full_name: String?,
-    @SerialName("created_at")
-
     val created_at: String?,
-
-    @SerialName("profile_image_url")
-    val profile_image_url: String? = null
+    val profileImageUrl: String? = null
 )
+
+
+fun User.toDto (): UserDto {
+    return UserDto(
+        userId = id,
+        profilePhotoUrl = profileImageUrl ?: "",
+        phoneNumber = phone_number ?: "",
+        fullName = full_name ?: "",
+        role = Role.fromValue(role)
+    )
+}
+
+fun UserDto.toModel (): User =
+    User(
+        id = this.userId,
+        email = "",
+        phoneNumber,
+        id_number = "",
+        role = role.name,
+        full_name = fullName,
+        created_at = LocalDateTime.toString(),
+        profileImageUrl = profilePhotoUrl,
+    )
+
+fun UserResponseDto.toUser(): User =
+    User(
+        id = id,
+        email = "",
+        phoneNumber,
+        id_number = "",
+        role = role,
+        full_name = fullName,
+        created_at = LocalDateTime.toString(),
+        profileImageUrl = profileImageUrl,
+    )

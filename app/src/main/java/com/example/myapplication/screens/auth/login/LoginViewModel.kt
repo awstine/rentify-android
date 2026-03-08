@@ -5,7 +5,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.models.SignInRequest
 import com.example.myapplication.data.repository.AuthRepository
+import com.example.myapplication.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -39,7 +41,8 @@ sealed interface LoginUiEvent {
 // 3. The ViewModel
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     var uiState by mutableStateOf(LoginUiState())
@@ -83,14 +86,15 @@ class LoginViewModel @Inject constructor(
             return
         }
 
-        val result = authRepository.signIn(
-            email = uiState.username,
+        val request = SignInRequest(
+            email =uiState.username,
             password = uiState.password
         )
+        val result = authRepository.signIn(request)
 
         result.fold(
             onSuccess = {
-                val profileResult = authRepository.getUserProfile()
+                val profileResult = userRepository.getUserProfile()
                 profileResult.fold(
                     onSuccess = { user ->
                         uiState = uiState.copy(isLoading = false, loginSuccess = true, userRole = user.role)
@@ -111,7 +115,7 @@ class LoginViewModel @Inject constructor(
     }
 
     suspend fun getUserRole(): String? {
-        return authRepository.getUserProfile().getOrNull()?.role
+        return userRepository.getUserProfile().getOrNull()?.role
     }
 
     fun signOut() {

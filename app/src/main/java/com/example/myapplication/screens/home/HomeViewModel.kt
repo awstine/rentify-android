@@ -9,6 +9,7 @@ import com.example.myapplication.data.models.Property
 import com.example.myapplication.data.models.Room
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.PropertyRepository
+import com.example.myapplication.data.repository.UserRepository
 import com.example.myapplication.navigation.Property as PropertyUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -25,7 +26,7 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val propertyRepository: PropertyRepository,
-    private val authRepository: AuthRepository
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     var uiState by mutableStateOf(HomeUiState())
@@ -43,7 +44,7 @@ class HomeViewModel @Inject constructor(
     private fun loadUserProfile() {
          viewModelScope.launch {
             try {
-                val profileResult = authRepository.getUserProfile()
+                val profileResult = userRepository.getUserProfile()
                 val profile = profileResult.getOrNull()
                 val emailName = profile?.email?.substringBefore("@")
 

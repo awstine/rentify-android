@@ -1,7 +1,8 @@
-package com.example.myapplication.data.local
+package com.example.myapplication.datasource.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.example.myapplication.data.local.AdminDashboardEntity
 
 @Database(
     entities = [CachedRoomEntity::class, TenantDashboardEntity::class, AdminDashboardEntity::class],

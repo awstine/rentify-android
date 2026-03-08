@@ -12,6 +12,7 @@ import com.example.myapplication.data.models.Room
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.BookingRepository
 import com.example.myapplication.data.repository.PropertyRepository
+import com.example.myapplication.data.repository.UserRepository
 import com.example.myapplication.di.SupabaseClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.postgrest.postgrest
@@ -53,7 +54,8 @@ data class RoomsUiState(
 class RoomsViewModel @Inject constructor(
     private val propertyRepository: PropertyRepository,
     private val authRepository: AuthRepository,
-    private val bookingRepository: BookingRepository
+    private val bookingRepository: BookingRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     var uiState by mutableStateOf(RoomsUiState())
@@ -67,7 +69,7 @@ class RoomsViewModel @Inject constructor(
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, error = null)
             try {
-                val profileResult = authRepository.getUserProfile()
+                val profileResult = userRepository.getUserProfile()
                 val profile = profileResult.getOrNull()
 
                 val role = profile?.role?.lowercase(Locale.ROOT) ?: "tenant"
@@ -251,7 +253,7 @@ class RoomsViewModel @Inject constructor(
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true)
             try {
-                val profileResult = authRepository.getUserProfile()
+                val profileResult = userRepository.getUserProfile()
                 val profile = profileResult.getOrNull()
                 if (profile != null) {
                     val propertyId = UUID.randomUUID().toString()
@@ -287,7 +289,7 @@ class RoomsViewModel @Inject constructor(
     fun createProperty(name: String, address: String) {
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true)
-            val profileResult = authRepository.getUserProfile()
+            val profileResult = userRepository.getUserProfile()
             val profile = profileResult.getOrNull()
 
             if (profile != null) {
@@ -321,7 +323,7 @@ class RoomsViewModel @Inject constructor(
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, isBookingSuccess = false)
             try {
-                val profileResult = authRepository.getUserProfile()
+                val profileResult = userRepository.getUserProfile()
                 val profile = profileResult.getOrNull()
                 if (profile != null) {
                     val booking = Booking(

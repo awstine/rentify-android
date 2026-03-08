@@ -7,13 +7,17 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.repository.AuthRepository
+import com.example.myapplication.data.repository.UserRepository
+import com.example.myapplication.datasource.preferences.RentifyPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val preferences: RentifyPreferences,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     var userRole by mutableStateOf<String?>(null)
@@ -30,26 +34,28 @@ class MainViewModel @Inject constructor(
                 
                 if (hasSession) {
                     // 1. Try to get role from network/metadata (getUserProfile handles both)
-                    val networkResult = authRepository.getUserProfile()
+                    val networkResult = userRepository.getUserProfile()
                     val networkRole = networkResult.getOrNull()?.role
                     
                     if (networkRole != null) {
                         Log.d("MainViewModel", "Found role from network/metadata: $networkRole")
                         userRole = networkRole
                         // Role is already cached inside getUserProfile, but we can ensure it here too
-                        authRepository.saveUserRole(networkRole)
+                        preferences.saveUserRole(networkRole)
                     } else {
                         // 2. Fallback to local cache if network/metadata fails
-                        val cachedRole = authRepository.getCachedUserRole()
-                        Log.d("MainViewModel", "Fallback to cached role: $cachedRole")
-                        userRole = cachedRole
+                        preferences.getUserRole().collect {
+                            userRole = it
+                        }
                     }
                 } else {
                     userRole = null
                 }
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Error initializing session", e)
-                userRole = authRepository.getCachedUserRole()
+                 preferences.getUserRole().collect {
+                     userRole = it
+                }
             } finally {
                 isLoading = false
                 Log.d("MainViewModel", "Final user role: $userRole")
@@ -61,7 +67,7 @@ class MainViewModel @Inject constructor(
         Log.d("MainViewModel", "Login success, setting role: $role")
         userRole = role
         viewModelScope.launch {
-            authRepository.saveUserRole(role)
+            preferences.saveUserRole(role)
         }
     }
 

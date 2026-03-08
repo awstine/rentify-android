@@ -1,8 +1,7 @@
 package com.example.myapplication.data.repository
 
-import android.util.Log
-import com.example.myapplication.data.local.CachedRoomEntity
-import com.example.myapplication.data.local.RoomDao
+import com.example.myapplication.datasource.local.CachedRoomEntity
+import com.example.myapplication.datasource.local.RoomDao
 import com.example.myapplication.data.models.Property
 import com.example.myapplication.data.models.Room
 import com.example.myapplication.di.SupabaseClient

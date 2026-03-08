@@ -2,18 +2,20 @@ package com.example.myapplication.di
 
 import android.content.Context
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.preferencesDataStoreFile
-import com.example.myapplication.data.local.RoomDao
+import com.example.myapplication.datasource.local.RoomDao
 import com.example.myapplication.data.repository.AuthRepository
+import com.example.myapplication.data.repository.AuthRepositoryImpl
 import com.example.myapplication.data.repository.BookingRepository
 import com.example.myapplication.data.repository.PaymentRepository
 import com.example.myapplication.data.repository.PropertyRepository
+import com.example.myapplication.data.repository.UserRepository
+import com.example.myapplication.data.repository.UserRepositoryImpl
+import com.example.myapplication.datasource.remote.AuthRemoteDataSource
+import com.example.myapplication.datasource.remote.user.UserRemoteDataSource
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 
 import javax.inject.Singleton
@@ -24,22 +26,16 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideDataStore(@ApplicationContext context: Context): DataStore<Preferences> {
-        return PreferenceDataStoreFactory.create(
-            produceFile = { context.preferencesDataStoreFile("user_prefs") }
-        )
-    }
-
-    @Provides
-    @Singleton
     fun providePaymentRepository(): PaymentRepository {
         return PaymentRepository()
     }
 
     @Provides
     @Singleton
-    fun provideAuthRepository(dataStore: DataStore<Preferences>): AuthRepository {
-        return AuthRepository(dataStore)
+    fun provideAuthRepository(
+        remoteDataSource: AuthRemoteDataSource
+    ): AuthRepository {
+        return AuthRepositoryImpl(remoteDataSource)
     }
 
     @Provides
@@ -52,5 +48,13 @@ object AppModule {
     @Singleton
     fun provideBookingRepository(): BookingRepository {
         return BookingRepository()
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserRepository(
+        userRemoteDataSource: UserRemoteDataSource
+    ): UserRepository {
+        return UserRepositoryImpl(userRemoteDataSource)
     }
 }

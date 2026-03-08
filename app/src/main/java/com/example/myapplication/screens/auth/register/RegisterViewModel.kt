@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.models.SignUpRequest
 import com.example.myapplication.data.models.User
 import com.example.myapplication.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,27 +24,38 @@ data class RegisterUiState(
     val usernameError: String? = null,
     val mobileError: String? = null,
     val passwordError: String? = null,
-
     // State to manage the registration process
     val isLoading: Boolean = false,
-    val registrationSuccess: Boolean = false
+    val registrationSuccess: Boolean = false,
 )
 
 // 2. UI Events: Defines all the actions a user can perform on the screen.
 sealed interface RegisterUiEvent {
-    data class UsernameChanged(val value: String) : RegisterUiEvent
-    data class MobileChanged(val value: String) : RegisterUiEvent
-    data class PasswordChanged(val value: String) : RegisterUiEvent
-    data class RememberMeChanged(val value: Boolean) : RegisterUiEvent
+    data class UsernameChanged(
+        val value: String,
+    ) : RegisterUiEvent
+
+    data class MobileChanged(
+        val value: String,
+    ) : RegisterUiEvent
+
+    data class PasswordChanged(
+        val value: String,
+    ) : RegisterUiEvent
+
+    data class RememberMeChanged(
+        val value: Boolean,
+    ) : RegisterUiEvent
+
     object TogglePasswordVisibility : RegisterUiEvent
+
     object Submit : RegisterUiEvent
 }
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
-
     var uiState by mutableStateOf(RegisterUiState())
         private set
 
@@ -52,21 +64,26 @@ class RegisterViewModel @Inject constructor(
             is RegisterUiEvent.UsernameChanged -> {
                 uiState = uiState.copy(username = event.value, usernameError = null)
             }
+
             is RegisterUiEvent.MobileChanged -> {
                 // Allow empty or digits only
                 if (event.value.isEmpty() || event.value.all { it.isDigit() }) {
                     uiState = uiState.copy(mobile = event.value, mobileError = null)
                 }
             }
+
             is RegisterUiEvent.PasswordChanged -> {
                 uiState = uiState.copy(password = event.value, passwordError = null)
             }
+
             is RegisterUiEvent.RememberMeChanged -> {
                 uiState = uiState.copy(rememberMe = event.value)
             }
+
             is RegisterUiEvent.TogglePasswordVisibility -> {
                 uiState = uiState.copy(isPasswordVisible = !uiState.isPasswordVisible)
             }
+
             is RegisterUiEvent.Submit -> {
                 viewModelScope.launch {
                     handleRegistration()
@@ -76,12 +93,13 @@ class RegisterViewModel @Inject constructor(
     }
 
     private suspend fun handleRegistration() {
-        uiState = uiState.copy(
-            isLoading = true,
-            usernameError = null,
-            mobileError = null,
-            passwordError = null
-        )
+        uiState =
+            uiState.copy(
+                isLoading = true,
+                usernameError = null,
+                mobileError = null,
+                passwordError = null,
+            )
 
         // Add logging to debug
         Log.d("RegisterViewModel", "Email: ${uiState.username}")
@@ -126,20 +144,22 @@ class RegisterViewModel @Inject constructor(
         }
 
         // --- Call the Supabase sign-up function ---
-        val result = authRepository.signUp(
+        val request = SignUpRequest(
             email = uiState.username.trim(),
             password = uiState.password,
-            userData = User(
-                id = "",
-                email = uiState.username.trim(),
-                phone_number = trimmedMobile, // Use trimmed mobile
-                id_number = null,
-                role = "tenant",
-                full_name = null,
-                created_at = null
-            )
+            userData =
+                User(
+                    id = "",
+                    email = uiState.username.trim(),
+                    phone_number = trimmedMobile, // Use trimmed mobile
+                    id_number = null,
+                    role = "tenant",
+                    full_name = null,
+                    created_at = null,
+                ),
         )
 
+        val result = authRepository.signUp(request)
         result.fold(
             onSuccess = {
                 Log.d("RegisterViewModel", "Registration successful!")
@@ -149,23 +169,30 @@ class RegisterViewModel @Inject constructor(
                 Log.e("RegisterViewModel", "Registration failed", error)
                 val errorMessage = error.message ?: "An unknown error occurred"
 
-                if (errorMessage.contains("Unable to validate email address: invalid format", ignoreCase = true)) {
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        usernameError = "Invalid email format. Please enter a valid email."
+                if (errorMessage.contains(
+                        "Unable to validate email address: invalid format",
+                        ignoreCase = true,
                     )
+                ) {
+                    uiState =
+                        uiState.copy(
+                            isLoading = false,
+                            usernameError = "Invalid email format. Please enter a valid email.",
+                        )
                 } else if (errorMessage.contains("phone_number", ignoreCase = true)) {
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        mobileError = "Mobile number is required"
-                    )
+                    uiState =
+                        uiState.copy(
+                            isLoading = false,
+                            mobileError = "Mobile number is required",
+                        )
                 } else {
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        passwordError = errorMessage
-                    )
+                    uiState =
+                        uiState.copy(
+                            isLoading = false,
+                            passwordError = errorMessage,
+                        )
                 }
-            }
+            },
         )
     }
 }
