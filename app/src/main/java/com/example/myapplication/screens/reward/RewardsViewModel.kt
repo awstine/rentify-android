@@ -13,7 +13,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.models.Reward
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.BookingRepository
+import com.example.myapplication.data.repository.UserRepository
+import com.example.myapplication.datasource.preferences.RentifyPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,7 +31,9 @@ data class RewardsUiState(
 @HiltViewModel
 class RewardsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val bookingRepository: BookingRepository
+    private val bookingRepository: BookingRepository,
+    private val userRepository: UserRepository,
+    private val preferences: RentifyPreferences
 ) : ViewModel() {
 
     var uiState by mutableStateOf(RewardsUiState())
@@ -43,12 +48,12 @@ class RewardsViewModel @Inject constructor(
             uiState = uiState.copy(isLoading = true, error = null)
 
             // Try fresh profile, fallback to metadata or cached ID
-            var profile = authRepository.getUserProfile().getOrNull()
+            var profile = userRepository.getUserProfile().getOrNull()
             if (profile == null) {
-                profile = authRepository.getUserFromMetadata()
+                profile = userRepository.getUserFromMetadata()
             }
 
-            val userId = profile?.id ?: authRepository.getCachedUserId()
+            val userId = profile?.id ?: preferences.getUserId().firstOrNull()
 
             if (userId == null) {
                 uiState = uiState.copy(isLoading = false, error = "User not found")

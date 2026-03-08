@@ -15,6 +15,7 @@ import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.BookingRepository
 import com.example.myapplication.data.repository.MachineRepository
 import com.example.myapplication.data.repository.PropertyRepository
+import com.example.myapplication.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -37,7 +38,8 @@ class TenantHomeViewModel @Inject constructor(
     private val bookingRepository: BookingRepository,
     private val machineRepository: MachineRepository,
     private val propertyRepository: PropertyRepository,
-    private val tenantDashboardDao: TenantDashboardDao
+    private val tenantDashboardDao: TenantDashboardDao,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     var uiState by mutableStateOf(TenantHomeUiState())
@@ -52,11 +54,11 @@ class TenantHomeViewModel @Inject constructor(
             uiState = uiState.copy(isLoading = true, error = null)
 
             // 1. Get User - Try fresh profile first, fallback to local metadata if offline
-            val profileResult = authRepository.getUserProfile()
+            val profileResult = userRepository.getUserProfile()
             var profile = profileResult.getOrNull()
 
             if (profile == null) {
-                profile = authRepository.getUserFromMetadata()
+                profile = userRepository.getUserFromMetadata()
             }
 
             if (profile == null) {

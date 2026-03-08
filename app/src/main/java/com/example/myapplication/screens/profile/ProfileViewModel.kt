@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.repository.AuthRepository
+import com.example.myapplication.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -15,7 +16,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     var uiState by mutableStateOf(ProfileState())
@@ -28,13 +30,13 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, error = null)
             
-            val result = authRepository.getUserProfile()
+            val result = userRepository.getUserProfile()
             
             if (result.isSuccess) {
                 uiState = uiState.copy(isLoading = false, user = result.getOrNull(), error = null)
             } else {
                 // Network failed, try offline metadata
-                val offlineUser = authRepository.getUserFromMetadata()
+                val offlineUser = userRepository.getUserFromMetadata()
                 if (offlineUser != null) {
                     uiState = uiState.copy(
                         isLoading = false, 
@@ -54,7 +56,7 @@ class ProfileViewModel @Inject constructor(
     fun updateProfilePhoto(uri: Uri) {
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true)
-            val result = authRepository.uploadProfilePhoto(uri)
+            val result = userRepository.uploadProfilePhoto(uri)
             uiState = result.fold(
                 onSuccess = { imageUrl ->
                     val updatedUser = uiState.user?.copy(profileImageUrl = imageUrl)
